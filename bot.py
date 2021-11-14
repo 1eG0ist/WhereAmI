@@ -34,9 +34,19 @@ def communication_with_bot(message):
             markup.add(item1, item2)
                         
             bot.send_message(message.chat.id, 'Давай выберем тип здания', reply_markup=markup)
-        elif message.text.lower() == "**университет":
-            bot.send_message(message.chat.id, 'Сколько этажей в твоем университете?')
-            bot.send_message(message.chat.id, 'пока только так')
+        elif message.text.lower()[0:2] == "**":
+            global type_of_building
+            type_of_building = message.text[2:]
+            if message.text.lower() == "**университет":
+                markup = types.InlineKeyboardMarkup(row_width=8)
+                list_of_floors = ['8', '7', '6', '5', '4', '3', '2', '1']
+                for i in range(len(list_of_floors)):
+                    item_floor = types.InlineKeyboardButton(list_of_floors[i], callback_data=list_of_floors[i])
+                    markup.add(item_floor)
+                        
+                bot.send_message(message.chat.id, f'Давай выберем cколько этажей в твоем {type_of_building}е', reply_markup=markup)
+            else:
+                bot.send_message(message.chat.id, 'я залагал')
         else:
             bot.send_message(message.chat.id, 'Даже не знаю, что ответить')
 
@@ -48,8 +58,12 @@ def callback_inline(call):
                 bot.send_message(call.message.chat.id, 'Введи две звездочки, а после как твое учебное здание называется(университет, колледж и т.д.)')
                 
             elif call.data == 'work_building':
-                bot.send_message(call.message.chat.id, 'Введи две звездочки, а после как твое рабочее здание называется(университет, колледж и т.д.)')
-
+                bot.send_message(call.message.chat.id, 'Введи две звездочки, а после как твое рабочее здание называется(завод, офис и т.д.)')
+                
+            elif call.data in [str(i) for i in range(8)]:
+                number_of_floors = int(call.data)
+                bot.send_message(call.message.chat.id, f'Хорошо, я запомнил, что количество этажей в твоем {type_of_building}е ровно {str(number_of_floors)}')
+                
     except Exception as e:
         print(repr(e))
 #RUN
