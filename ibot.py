@@ -19,11 +19,11 @@ async def command_start(message: types.Message):
 @dp.message_handler()
 async def bot_message(message: types.Message):
     #await bot.send_message(message.from_user.id, message.text)
-    if message.text == ('👁Режим просмотра'): 
-        await bot.send_message(message.from_user.id, '*РЕЖИМ ПРОСМОТРА*', reply_markup = nav.ViewMenu)
-        
-    elif message.text == '⬅Главное меню':
+    if message.text == '⬅Главное меню':
         await bot.send_message(message.from_user.id, '*ГЛАВНОЕ МЕНЮ*', reply_markup = nav.mainMenu)
+        
+    elif message.text == '💕Избранное':
+        await bot.send_message(message.from_user.id, '*ИЗБРАННОЕ*', reply_markup = nav.LikeMenu)
         
     elif message.text == 'Другое➱':
         await bot.send_message(message.from_user.id, '*ДРУГОЕ*',\
@@ -31,17 +31,30 @@ async def bot_message(message: types.Message):
 
     elif message.text == '➕Добавить здание':
         await bot.send_message(message.from_user.id,\
-                               'Введите через запятую: \n*Название здания*,*Сколько в здании этажей*,\nПосле поочередно добавьте фото схемы этажей с 1 до последнего(на схеме стоит подписать номера кабинетов)', reply_markup = nav.addMenu)
+                               'Введите через запятую: \n*Название здания*,*Сколько в здании этажей*',\
+                               reply_markup = nav.addMenu)
+        
     elif message.text == '⚙️Параметры':
         await bot.send_message(message.from_user.id, '*Меню параметров*', reply_markup = nav.SettingsMenu)
+        
     elif message.text == '📜Показать все здания':
         await bot.send_message(message.from_user.id, 'Тут надо из SQLite взять все здания')
 
     elif message.text == '⛔Удалить ВСЕ здания':
-        await bot.send_message(message.from_user.id, 'Тут надо удалить все здания из базы данных SQLite')
+        await bot.send_message(message.from_user.id,\
+                'Если вы действительно хотите удалить все здания нажмите на кнопку удаления еще раз',\
+                               reply_markup = nav.DelAllBuildsMenu)
 
+    elif message.text == '⚠❗⛔УДАЛИТЬ ВСЕ ЗДАНИЯ БЕЗВОЗВРАТНО':
+        await bot.send_message(message.from_user.id, 'тут вот типо удалится вся бд с значениями зданий')
+    
     elif message.text == '‼Удалить ОДНО здание':
         await bot.send_message(message.from_user.id, 'Тут надо сделать кнопки с названиями всех зданий')
+
+    elif message.text == '✚❥Добавить в избранное':
+        await bot.send_message(message.from_user.id,\
+            'Введите название здания, которое вы хотите добавить в избранное(вот тут надо в бд пройтись по столбику
+                        'с именами зданий и добавить их в другую бд - избранное)')
 
     else:
         message.reply('ЭТО ШТО 0_о, не понял... НОрмально общайся!')
