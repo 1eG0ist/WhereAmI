@@ -15,11 +15,6 @@ btnAddLike = KeyboardButton('✚❥Добавить в избранное')
 LikeMenu = ReplyKeyboardMarkup(resize_keyboard=True).add(btnAddLike, btnMain)
 
 
-# ~~~AddMenu~~~
-btnAdd = KeyboardButton('*Добавление нового здания*')
-addMenu = ReplyKeyboardMarkup(resize_keyboard=True).add(btnAdd, btnMain)
-
-
 # ~~~SettingsMenu~~~
 btnPrintAll = KeyboardButton('📜Показать все здания')
 btnDelAllBuilds = KeyboardButton('⛔Удалить ВСЕ здания')
@@ -28,7 +23,7 @@ btnDelOneBuild = KeyboardButton('‼Удалить ОДНО здание')
 SettingsMenu = ReplyKeyboardMarkup(resize_keyboard=True).add(
     btnPrintAll, btnDelAllBuilds, btnDelOneBuild, btnMain)
 # ~~~DelAllBuildsMenu~~~
-btnDoDellAllBuilds = KeyboardButton('⚠❗⛔УДАЛИТЬ ВСЕ ЗДАНИЯ БЕЗВОЗВРАТНО')
+btnDoDellAllBuilds = KeyboardButton('⚠❗⛔УДАЛИТЬ ВСЕ ЗДАНИЯ ИЗ ИЗБРАННОГО БЕЗВОЗВРАТНО')
 DelAllBuildsMenu = ReplyKeyboardMarkup(resize_keyboard=False).add(btnDoDellAllBuilds, btnMain)
 # ~~~DelOneBuildMenu~~~
 DelOneBuildMenu = ReplyKeyboardMarkup(resize_keyboard=True).add(btnMain)
