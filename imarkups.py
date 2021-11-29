@@ -1,5 +1,4 @@
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton,\
-     InlineKeyboardButton, InlineKeyboardMarkup
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 
 btnMain = KeyboardButton('⬅Главное меню')
 
@@ -16,12 +15,11 @@ LikeMenu = ReplyKeyboardMarkup(resize_keyboard=True).add(btnAddLike, btnMain)
 
 
 # ~~~SettingsMenu~~~
-btnPrintAll = KeyboardButton('📜Показать все здания')
 btnDelAllBuilds = KeyboardButton('⛔Удалить ВСЕ здания')
 btnDelOneBuild = KeyboardButton('‼Удалить ОДНО здание')
 
 SettingsMenu = ReplyKeyboardMarkup(resize_keyboard=True).add(
-    btnPrintAll, btnDelAllBuilds, btnDelOneBuild, btnMain)
+    btnDelAllBuilds, btnDelOneBuild, btnMain)
 # ~~~DelAllBuildsMenu~~~
 btnDoDellAllBuilds = KeyboardButton('⚠❗⛔УДАЛИТЬ ВСЕ ЗДАНИЯ ИЗ ИЗБРАННОГО БЕЗВОЗВРАТНО')
 DelAllBuildsMenu = ReplyKeyboardMarkup(resize_keyboard=False).add(btnDoDellAllBuilds, btnMain)
@@ -33,7 +31,3 @@ DelOneBuildMenu = ReplyKeyboardMarkup(resize_keyboard=True).add(btnMain)
 btnInfo = KeyboardButton('➕Добавить здание')
 btnMoney = KeyboardButton('⚙Параметры')
 otherMenu = ReplyKeyboardMarkup(resize_keyboard=True).add(btnInfo, btnMoney, btnMain)
-
-
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~InlineMenu~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-urlkb = InlineKeyboardMarkup(row_width=2)

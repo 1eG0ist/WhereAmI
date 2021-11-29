@@ -25,11 +25,11 @@ db = SQLighter('probase.db')
 
 @dp.message_handler(commands=['start'])
 async def command_start(message: types.Message):
-    global user_id
-    user_id = int(message.from_user.id)
     await bot.send_message(message.from_user.id,
                            'Здарова {0.first_name}'.format(message.from_user),
                            reply_markup=nav.mainMenu)
+
+# ~~~~~~~~~~~~~Машина состояний добавления нового здания~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
 class DialogWithUser(StatesGroup):
@@ -40,15 +40,13 @@ class DialogWithUser(StatesGroup):
     waiting_for_number_address = State()
 
 
-# await message.reply('Вводите по очереди 1.Наименование здания. 2.Количество этажей в нем'
-#                        '. 3.Город в котором оно находится  4.Улицу на которой оно находится '
-#                        '5. Номер этого здания на улице которую вы указали только что')
-
-
 @dp.message_handler(Text(equals='➕Добавить здание'))
 async def start_dialog_with_user(message: types.Message):
-    await message.answer('1. dddd')
+    # ~~~запоминаем id юзера~~~
+    global user_id
+    user_id = int(message.from_user.id)
 
+    await message.answer('1. Введите имя вашего здания')
     await DialogWithUser.waiting_for_building_name.set()
 
 
@@ -87,6 +85,23 @@ async def start_waiting_for_number_address(message: types.Message, state: FSMCon
                          f"{user_new_building_data['building_number_address']}")
     adding_build(user_new_building_data)
     await state.finish()
+
+
+# ~~~~~~~~~~~~~~~~~~~~Функция избранного берущая данные из бд~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+@dp.message_handler(Text(equals='💕Избранное'))
+async def favourites_buildings(message: types.Message):
+    url_keyboard = InlineKeyboardMarkup(row_width=2)
+    id_user = int(message.from_user.id)
+    favour_list = db.show_favourites_user_buildings(id_user)
+    for i in favour_list:
+        url_keyboard.add(InlineKeyboardButton(i, callback_data=i))
+    print(url_keyboard)
+    await message.answer('Ваши здания', reply_markup=url_keyboard)
+
+    @dp.callback_query_handler(lambda c: c.data in favour_list)
+    async def reaction_on_favourites_buildings(callback_query: types.CallbackQuery):
+        await bot.answer_callback_query(callback_query.id, callback_query['data'])
 
 
 @dp.message_handler()
@@ -148,8 +163,9 @@ def adding_build(slovarik):
         db.add_user(user_id)
         id_of_user = db.get_user_id(user_id)
     db.add_build(id_of_user, slovarik['building_name'], slovarik['number_of_building'],
-                 slovarik['building_town_address'],slovarik['building_street_address'],
+                 slovarik['building_town_address'], slovarik['building_street_address'],
                  slovarik['building_number_address'])
+
 
 register_handler_builds(dp)
 
