@@ -87,7 +87,7 @@ async def start_waiting_for_number_address(message: types.Message, state: FSMCon
     await state.finish()
 
 
-# ~~~~~~~~~~~~~~~~~~~~Функция избранного берущая данные из бд~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# ~~~~~~~~~~~~~~~~~~~~Функция избранного берущая данные из бд~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 @dp.message_handler(Text(equals='💕Избранное'))
 async def favourites_buildings(message: types.Message):
@@ -96,12 +96,38 @@ async def favourites_buildings(message: types.Message):
     favour_list = db.show_favourites_user_buildings(id_user)
     for i in favour_list:
         url_keyboard.add(InlineKeyboardButton(i, callback_data=i))
-    print(url_keyboard)
     await message.answer('Ваши здания', reply_markup=url_keyboard)
 
     @dp.callback_query_handler(lambda c: c.data in favour_list)
     async def reaction_on_favourites_buildings(callback_query: types.CallbackQuery):
         await bot.answer_callback_query(callback_query.id, callback_query['data'])
+
+# ~~~~~~~~~~~~~~~~~~~~~~~Функция удаления здания из избранного~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+@dp.message_handler(Text(equals='‼Удалить ОДНО здание'))
+async def delete_from_fav_building(message: types.Message):
+    url_keyboard = InlineKeyboardMarkup(row_width=2)
+    id_user = int(message.from_user.id)
+    favour_list = db.show_favourites_user_buildings(id_user)
+    for i in favour_list:
+        url_keyboard.add(InlineKeyboardButton(i, callback_data=i))
+    await message.answer('Ваши здания', reply_markup=url_keyboard)
+
+    @dp.callback_query_handler(lambda c: c.data in favour_list)
+    async def reverse_status_user_with_build(callback_query: types.CallbackQuery):
+        db.update_building_from_user(callback_query['data'], id_user, 0)
+        await bot.send_message(message.from_user.id, f"Здание {callback_query['data']}"
+                                                     f" было удалено из списка избранных")
+
+# ~~~~~~~~~~~~~~~~~~~~~~~Функция удаления всех здания из избранного~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+@dp.message_handler(Text(equals='⚠❗⛔УДАЛИТЬ ВСЕ ЗДАНИЯ ИЗ ИЗБРАННОГО БЕЗВОЗВРАТНО'))
+async def delete_from_fav_building(message: types.Message):
+    db.update_all_buildings_from_user(int(message.from_user.id), 0)
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~Связь и взаимодействия главного меню~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
 @dp.message_handler()
@@ -128,9 +154,6 @@ async def bot_message(message: types.Message):
 
     elif message.text == '⚠❗⛔УДАЛИТЬ ВСЕ ЗДАНИЯ БЕЗВОЗВРАТНО':
         await bot.send_message(message.from_user.id, 'тут вот типо удалится вся бд с значениями зданий')
-
-    elif message.text == '‼Удалить ОДНО здание':
-        await bot.send_message(message.from_user.id, 'Тут надо сделать кнопки с названиями всех зданий')
 
     elif message.text == '✚❥Добавить в избранное':
         await bot.send_message(message.from_user.id, 'Грустно')
