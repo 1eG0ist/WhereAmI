@@ -7,7 +7,6 @@ from aiogram.contrib.fsm_storage.memory import MemoryStorage
 import logging
 import imarkups as nav
 from isqlighter import SQLighter
-import sqlite3
 
 
 TOKEN = '2144915050:AAFasIxNNZHD8MhSJn2pTnpaNP2mSfLQ0W8'
@@ -38,15 +37,19 @@ class DialogWithUser(StatesGroup):
     waiting_for_town_address = State()
     waiting_for_street_address = State()
     waiting_for_number_address = State()
+    waiting_for_downloading_photos = State()
 
 
-@dp.message_handler(Text(equals='➕Добавить здание'))
+@dp.message_handler(Text(equals='🔨📷Добавить здание в бота лично'))
 async def start_dialog_with_user(message: types.Message):
     # ~~~запоминаем id юзера~~~
     global user_id
     user_id = int(message.from_user.id)
 
-    await message.answer('1. Введите имя вашего здания')
+    await message.answer("1. Введите имя вашего здания: \n Если хотите прервать добавление "
+                         "нового здания просто напишите сообщение 'Отмена' в чат, или комманду "
+                         "'/отмена'.\nЕсли вы ошиблись, то нажав на кнопку 'Назад', вы вернетесь "
+                         "на один шаг назад.", reply_markup=nav.AddingMenu)
     await DialogWithUser.waiting_for_building_name.set()
 
 
@@ -58,20 +61,20 @@ async def start_waiting_for_building_name(message: types.Message, state: FSMCont
 
 async def start_waiting_for_number_of_floors(message: types.Message, state: FSMContext):
     await state.update_data(number_of_building=message.text.lower())
+    await message.answer('3. Введите город в котором находится ваше здание')
     await DialogWithUser.next()
-    await message.answer('3. Введите город в котором находится ваше здание: ')
 
 
 async def start_waiting_for_town_address(message: types.Message, state: FSMContext):
     await state.update_data(building_town_address=message.text.lower())
+    await message.answer('4. Введите название улицы на которой находится ваше здание')
     await DialogWithUser.next()
-    await message.answer('4. Теперь введите название улицы на которой находится ваше здание: ')
 
 
 async def start_waiting_for_street_address(message: types.Message, state: FSMContext):
     await state.update_data(building_street_address=message.text.lower())
+    await message.answer('5. Введите номер вашего здания на указанной улице')
     await DialogWithUser.next()
-    await message.answer('5. Последнее, что нужно это ввести номер вашего здания на указанной улице')
 
 
 async def start_waiting_for_number_address(message: types.Message, state: FSMContext):
@@ -82,12 +85,57 @@ async def start_waiting_for_number_address(message: types.Message, state: FSMCon
                          f"{user_new_building_data['number_of_building']} и находится оно в городе "
                          f"{user_new_building_data['building_town_address']} по адресу "
                          f"{user_new_building_data['building_street_address']}, "
-                         f"{user_new_building_data['building_number_address']}")
-    adding_build(user_new_building_data)
+                         f"{user_new_building_data['building_number_address']}",
+                         reply_markup=nav.mainMenu)
+    adding_build(user_new_building_data, user_id)
+    await state.finish()
+
+# -------------------------Откат состояния на шаг назад~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+async def cmd_previous(message: types.Message, state: FSMContext):
+    if await state.get_state() is None:
+        return
+    if await state.get_state() == 'DialogWithUser:waiting_for_building_name':
+        await message.answer('Вы не можете вернуться на предыдущий шаг, так как находитесь на первом')
+        return
+    await message.answer("Вы перешли на шаг назад")
+    await DialogWithUser.previous()
+
+# --------------------Функция прерывания работы состояний~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+@dp.message_handler(Text(equals='Отмена'))
+async def cmd_cancel(message: types.Message, state: FSMContext):
+    await state.finish()
+    await message.answer("Добавление нового здания прекращено", reply_markup=nav.mainMenu)
+
+# ~~~~~~~~~~~~~~~~~~~Добавление существующего в бд здания к пользователю~~~~~~~~~~~~~~~~~~~
+
+
+class Addexistingbuilding(StatesGroup):
+    ex_wait_building_name = State()
+
+
+@dp.message_handler(Text(equals='🔍Добавить существующее в боте здание'))
+async def add_another_building(message: types.Message):
+    await message.answer('Введите имя здания которое вы хотите найти')
+    await Addexistingbuilding.ex_wait_building_name.set()
+
+
+async def add_name_of_another_building(message: types.Message, state: FSMContext):
+    if db.check_on_another_building_to_user(message.text.lower(), int(message.from_user.id)):
+        db.add_another_building_to_user(message.text.lower(), int(message.from_user.id))
+    else:
+        await message.answer("Похоже, что такого здания в нашего бота еще не добавляли, проверьте "
+                             "правильно ли вы ввели имя вашего здания, если да, то предлагаем вам самим "
+                             "добавить ваше здание.\nТак же вам стоит проверить не добавлено ли здание на ваш аккаунт"
+                             "телеграмм")
     await state.finish()
 
 
 # ~~~~~~~~~~~~~~~~~~~~Функция избранного берущая данные из бд~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 
 @dp.message_handler(Text(equals='💕Избранное'))
 async def favourites_buildings(message: types.Message):
@@ -149,8 +197,11 @@ async def bot_message(message: types.Message):
 
     elif message.text == '⛔Удалить ВСЕ здания':
         await bot.send_message(message.from_user.id,
-                               'Если вы действительно хотите удалить все здания нажмите на кнопку удаления еще раз',
+                    'Если вы действительно хотите удалить все здания нажмите на кнопку удаления еще раз',
                                reply_markup=nav.DelAllBuildsMenu)
+    elif message.text == '➕Добавить здание':
+        await bot.send_message(message.from_user.id, 'Выберите что вам нужно',
+                               reply_markup=nav.AddingChoiceMenu)
 
     elif message.text == '⚠❗⛔УДАЛИТЬ ВСЕ ЗДАНИЯ БЕЗВОЗВРАТНО':
         await bot.send_message(message.from_user.id, 'тут вот типо удалится вся бд с значениями зданий')
@@ -162,35 +213,45 @@ async def bot_message(message: types.Message):
         await message.reply('ЭТО ШТО 0_о, не понял... НОрмально общайся!')
 
 
-def register_handler_builds(dp1: Dispatcher):
-    dp1.register_message_handler(start_dialog_with_user, commands='building', state="*")
-    dp1.register_message_handler(start_waiting_for_building_name,
-                                 state=DialogWithUser.waiting_for_building_name)
+def register_handler_buildings(dp: Dispatcher):
+    dp.register_message_handler(start_dialog_with_user, commands='building', state="*")
+    dp.register_message_handler(cmd_cancel, state="*", commands="отмена")
+    dp.register_message_handler(cmd_cancel, Text(equals="отмена", ignore_case=True), state="*")
+    dp.register_message_handler(cmd_previous, Text(equals="назад", ignore_case=True), state="*")
+    dp.register_message_handler(start_waiting_for_building_name,
+                                state=DialogWithUser.waiting_for_building_name)
 
-    dp1.register_message_handler(start_waiting_for_number_of_floors,
-                                 state=DialogWithUser.waiting_for_number_of_floors)
+    dp.register_message_handler(start_waiting_for_number_of_floors,
+                                state=DialogWithUser.waiting_for_number_of_floors)
 
-    dp1.register_message_handler(start_waiting_for_town_address,
-                                 state=DialogWithUser.waiting_for_town_address)
+    dp.register_message_handler(start_waiting_for_town_address,
+                                state=DialogWithUser.waiting_for_town_address)
 
-    dp1.register_message_handler(start_waiting_for_street_address,
-                                 state=DialogWithUser.waiting_for_street_address)
+    dp.register_message_handler(start_waiting_for_street_address,
+                                state=DialogWithUser.waiting_for_street_address)
 
-    dp1.register_message_handler(start_waiting_for_number_address,
-                                 state=DialogWithUser.waiting_for_number_address)
+    dp.register_message_handler(start_waiting_for_number_address,
+                                state=DialogWithUser.waiting_for_number_address)
 
 
-def adding_build(slovarik):
+def register_existing_handler_buildings(dp: Dispatcher):
+    dp.register_message_handler(add_another_building, commands='addexisbuilding', state="*")
+    dp.register_message_handler(add_name_of_another_building,
+                                state=Addexistingbuilding.ex_wait_building_name)
+
+
+def adding_build(slovarik, user_id):
     id_of_user = db.get_user_id(user_id)
     if len(id_of_user) == 0:
         db.add_user(user_id)
         id_of_user = db.get_user_id(user_id)
-    db.add_build(id_of_user, slovarik['building_name'], slovarik['number_of_building'],
-                 slovarik['building_town_address'], slovarik['building_street_address'],
-                 slovarik['building_number_address'])
+    db.add_new_build(id_of_user, slovarik['building_name'], slovarik['number_of_building'],
+                     slovarik['building_town_address'], slovarik['building_street_address'],
+                     slovarik['building_number_address'])
 
 
-register_handler_builds(dp)
+register_handler_buildings(dp)
+register_existing_handler_buildings(dp)
 
 if __name__ == '__main__':
     executor.start_polling(dp, skip_updates=True)

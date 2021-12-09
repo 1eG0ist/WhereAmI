@@ -13,7 +13,6 @@ mainMenu = ReplyKeyboardMarkup(resize_keyboard=True).add(btnRandom, btnOther)
 btnAddLike = KeyboardButton('✚❥Добавить в избранное')
 LikeMenu = ReplyKeyboardMarkup(resize_keyboard=True).add(btnAddLike, btnMain)
 
-
 # ~~~SettingsMenu~~~
 btnDelAllBuilds = KeyboardButton('⛔Удалить ВСЕ здания')
 btnDelOneBuild = KeyboardButton('‼Удалить ОДНО здание')
@@ -26,8 +25,19 @@ DelAllBuildsMenu = ReplyKeyboardMarkup(resize_keyboard=False).add(btnDoDellAllBu
 # ~~~DelOneBuildMenu~~~
 DelOneBuildMenu = ReplyKeyboardMarkup(resize_keyboard=True).add(btnMain)
 
-
 # ~~~OtherMenu~~~
 btnInfo = KeyboardButton('➕Добавить здание')
 btnMoney = KeyboardButton('⚙Параметры')
 otherMenu = ReplyKeyboardMarkup(resize_keyboard=True).add(btnInfo, btnMoney, btnMain)
+
+# ~~~ChoiceAddMenu~~~
+btnAddExistingBuilding = KeyboardButton('🔍Добавить существующее в боте здание')
+btnAddNewBuilding = KeyboardButton('🔨📷Добавить здание в бота лично')
+AddingChoiceMenu = ReplyKeyboardMarkup(resize_keyboard=True).add(btnAddNewBuilding,
+                                                                  btnAddExistingBuilding, btnMain)
+
+# ~~~Adding_build_menu~~~
+btnStop = KeyboardButton('Отмена')
+btnFinish = KeyboardButton('✔Завершить')
+btnPrevious = KeyboardButton('Назад')
+AddingMenu = ReplyKeyboardMarkup(resize_keyboard=True).add(btnStop, btnPrevious, btnFinish)
