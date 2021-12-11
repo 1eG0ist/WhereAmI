@@ -36,7 +36,6 @@ class SQLighter:
                 (build_name, build_town_address, build_street_address,
                     build_number_address)
             ).lastrowid
-            print(idishnik)
             self.cursor.execute(
                 "INSERT INTO 'user_buildings' (user_id, build_id) VALUES (?, ?)",
                 (int(user_id[0][0]), int(idishnik))
@@ -75,18 +74,31 @@ class SQLighter:
 
         self.connection.commit()
 
+    # ~~~~~~~обращение к бд для добавления в избранное юзера уже существующих зданий~~~~~~~
+
     def check_on_another_building_to_user(self, name, user_tg_id):
         names_of_b = self.cursor.execute(f"""SELECT build_name FROM buildings JOIN
-             user_buildings JOIN user ON buildings.id = user_buildings.build_id AND 
-             user.user_telegram_id != {user_tg_id} WHERE buildings.build_name = '{name}' AND 
-             user_buildings.user_id = user.id""")
+             user_buildings JOIN user ON buildings.id = user_buildings.build_id WHERE
+             buildings.build_name = '{name}' AND user_buildings.user_id = user.id AND
+             user.user_telegram_id != {user_tg_id}
+             """)
         return bool(len(list(names_of_b)))
+
+    def check_on_added_buildings_of_user(self, name, user_tg_id):
+        names_of_b = self.cursor.execute(f"""SELECT build_name FROM buildings JOIN
+                     user_buildings JOIN user ON buildings.id = user_buildings.build_id WHERE
+                     buildings.build_name = '{name}' AND user_buildings.user_id = user.id AND
+                     user.user_telegram_id = {user_tg_id}
+                     """)
+        return list(names_of_b)
 
     def add_another_building_to_user(self, name, user_tg_id):
         self.cursor.execute("""INSERT INTO 'user_buildings' 
         (user_id, build_id, user_to_building_status) VALUES (?, ?, ?)""",
                 (list(self.cursor.execute(f'SELECT id FROM user WHERE user_telegram_id = {user_tg_id}'))[0][0],
                     list(self.cursor.execute(f'SELECT id FROM buildings WHERE build_name = "{name}"'))[0][0], 1))
+
+        self.connection.commit()
 
     def close(self):
         self.connection.close()

@@ -22,6 +22,7 @@ dp = Dispatcher(bot, storage=MemoryStorage())
 db = SQLighter('probase.db')
 
 
+@dp.message_handler(commands=['subscribe'])
 @dp.message_handler(commands=['start'])
 async def command_start(message: types.Message):
     await bot.send_message(message.from_user.id,
@@ -119,18 +120,27 @@ class Addexistingbuilding(StatesGroup):
 
 @dp.message_handler(Text(equals='🔍Добавить существующее в боте здание'))
 async def add_another_building(message: types.Message):
-    await message.answer('Введите имя здания которое вы хотите найти')
+    await bot.send_message(message.from_user.id,
+                           'Введите имя здания которое вы хотите найти',
+                           reply_markup=types.ReplyKeyboardRemove())
     await Addexistingbuilding.ex_wait_building_name.set()
 
 
 async def add_name_of_another_building(message: types.Message, state: FSMContext):
     if db.check_on_another_building_to_user(message.text.lower(), int(message.from_user.id)):
-        db.add_another_building_to_user(message.text.lower(), int(message.from_user.id))
+        if len(db.check_on_added_buildings_of_user(message.text.lower(), int(message.from_user.id))) == 0:
+            db.add_another_building_to_user(message.text.lower(), int(message.from_user.id))
+            await message.answer(f"Здание {message.text} успешно добавлено в избранное.",
+                                 reply_markup=nav.AddingChoiceMenu)
+        else:
+            await message.answer(f"Здание под название {message.text} уже есть у вас в избранном.",
+                                 reply_markup=nav.AddingChoiceMenu)
     else:
-        await message.answer("Похоже, что такого здания в нашего бота еще не добавляли, проверьте "
-                             "правильно ли вы ввели имя вашего здания, если да, то предлагаем вам самим "
-                             "добавить ваше здание.\nТак же вам стоит проверить не добавлено ли здание на ваш аккаунт"
-                             "телеграмм")
+        await bot.send_message(message.from_user.id, "Похоже, что такого здания в нашего бота еще не "
+                                                     "добавляли, проверьте правильно ли вы ввели имя "
+                                                     "вашего здания, если да, то предлагаем вам самим "
+                                                     "добавить ваше здание.",
+                               reply_markup=nav.AddingChoiceMenu)
     await state.finish()
 
 
