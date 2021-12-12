@@ -56,8 +56,17 @@ async def start_dialog_with_user(message: types.Message):
 
 async def start_waiting_for_building_name(message: types.Message, state: FSMContext):
     await state.update_data(building_name=message.text.lower())
-    await message.answer('2. Введите количество этажей в вашем здании')
-    await DialogWithUser.next()
+    if (message.text.lower(),) in db.show_all_buildings_names():
+        await message.answer(f"Здание под названием {message.text} уже добавлено в нашего бота, "
+                             f"проверьте, возможно это как раз то здание которое вы ищите "
+                             f"если это не так, и названия зданий совпали по случайности, назовите "
+                             f"здание по другому")
+        await message.answer("Вы перешли на шаг назад, введите другое название здания")
+        await DialogWithUser.previous()
+        await DialogWithUser.next()
+    else:
+        await message.answer('2. Введите количество этажей в вашем здании')
+        await DialogWithUser.next()
 
 
 async def start_waiting_for_number_of_floors(message: types.Message, state: FSMContext):
@@ -127,7 +136,7 @@ async def add_another_building(message: types.Message):
 
 
 async def add_name_of_another_building(message: types.Message, state: FSMContext):
-    if db.check_on_another_building_to_user(message.text.lower(), int(message.from_user.id)):
+    if (message.text.lower(),) in db.show_all_buildings_names():
         if len(db.check_on_added_buildings_of_user(message.text.lower(), int(message.from_user.id))) == 0:
             db.add_another_building_to_user(message.text.lower(), int(message.from_user.id))
             await message.answer(f"Здание {message.text} успешно добавлено в избранное.",
@@ -155,6 +164,7 @@ async def favourites_buildings(message: types.Message):
     for i in favour_list:
         url_keyboard.add(InlineKeyboardButton(i, callback_data=i))
     await message.answer('Ваши здания', reply_markup=url_keyboard)
+    db.show_all_buildings_names()
 
     @dp.callback_query_handler(lambda c: c.data in favour_list)
     async def reaction_on_favourites_buildings(callback_query: types.CallbackQuery):
@@ -174,7 +184,7 @@ async def delete_from_fav_building(message: types.Message):
 
     @dp.callback_query_handler(lambda c: c.data in favour_list)
     async def reverse_status_user_with_build(callback_query: types.CallbackQuery):
-        db.update_building_from_user(callback_query['data'], id_user, 0)
+        db.delete_building_from_user(callback_query['data'], id_user)
         await bot.send_message(message.from_user.id, f"Здание {callback_query['data']}"
                                                      f" было удалено из списка избранных")
 
@@ -183,7 +193,7 @@ async def delete_from_fav_building(message: types.Message):
 
 @dp.message_handler(Text(equals='⚠❗⛔УДАЛИТЬ ВСЕ ЗДАНИЯ ИЗ ИЗБРАННОГО БЕЗВОЗВРАТНО'))
 async def delete_from_fav_building(message: types.Message):
-    db.update_all_buildings_from_user(int(message.from_user.id), 0)
+    db.delete_all_buildings_from_user(int(message.from_user.id))
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~Связь и взаимодействия главного меню~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
