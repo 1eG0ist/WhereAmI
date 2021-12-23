@@ -38,7 +38,7 @@ class DialogWithUser(StatesGroup):
     waiting_for_town_address = State()
     waiting_for_street_address = State()
     waiting_for_number_address = State()
-    waiting_for_downloading_photos = State()
+    adding_photos_from_user = State()
 
 
 @dp.message_handler(Text(equals='🔨📷Добавить здание в бота лично'))
@@ -50,7 +50,7 @@ async def start_dialog_with_user(message: types.Message):
     await message.answer("1. Введите имя вашего здания: \n Если хотите прервать добавление "
                          "нового здания просто напишите сообщение 'Отмена' в чат, или комманду "
                          "'/отмена'.\nЕсли вы ошиблись, то нажав на кнопку 'Назад', вы вернетесь "
-                         "на один шаг назад.", reply_markup=nav.AddingMenu)
+                         "на один шаг назад.", reply_markup=nav.AddingBuildMenu)
     await DialogWithUser.waiting_for_building_name.set()
 
 
@@ -96,10 +96,25 @@ async def start_waiting_for_number_address(message: types.Message, state: FSMCon
                          f"{user_new_building_data['building_town_address']} по адресу "
                          f"{user_new_building_data['building_street_address']}, "
                          f"{user_new_building_data['building_number_address']}",
-                         reply_markup=nav.mainMenu)
+                         reply_markup=nav.AddingPhotosMenu)
     adding_build(user_new_building_data, user_id)
-    await state.finish()
+    await DialogWithUser.next()
 
+
+async def start_adding_photos_from_user(message: types.Message, state: FSMContext):
+    # Выполняется единожды, только в начале
+    if 'lst_of_photos' not in locals() and 'lst_of_photos' not in globals():
+        lst_of_photos = [[]]
+    print(lst_of_photos)
+    if message.text.lower() == 'следующее':
+        lst_of_photos.append([])
+    elif message.text == '✔Завершить':
+        await message.answer('Ваши данные успешно загружены в базу данных')
+
+        await state.finish()
+    else:
+        lst_of_photos[-1].append(message.text)
+        await message.answer('Вводи дальше')
 # -------------------------Откат состояния на шаг назад~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
@@ -252,6 +267,9 @@ def register_handler_buildings(dp: Dispatcher):
 
     dp.register_message_handler(start_waiting_for_number_address,
                                 state=DialogWithUser.waiting_for_number_address)
+
+    dp.register_message_handler(start_adding_photos_from_user,
+                                state=DialogWithUser.adding_photos_from_user)
 
 
 def register_existing_handler_buildings(dp: Dispatcher):
