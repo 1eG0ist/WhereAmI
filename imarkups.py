@@ -37,7 +37,13 @@ AddingChoiceMenu = ReplyKeyboardMarkup(resize_keyboard=True).add(btnAddNewBuildi
                                                                   btnAddExistingBuilding, btnMain)
 
 # ~~~Adding_build_menu~~~
-btnStop = KeyboardButton('Отмена')
-btnFinish = KeyboardButton('✔Завершить')
+btnCancel = KeyboardButton('Отмена')
 btnPrevious = KeyboardButton('Назад')
-AddingMenu = ReplyKeyboardMarkup(resize_keyboard=True).add(btnStop, btnPrevious, btnFinish)
+AddingBuildMenu = ReplyKeyboardMarkup(resize_keyboard=True).add(btnCancel, btnPrevious)
+
+
+# ~~~Adding_photos_menu~~~
+btnFinish = KeyboardButton('✔Завершить')
+btnNextStage = KeyboardButton('Следующее')
+
+AddingPhotosMenu = ReplyKeyboardMarkup(resize_keyboard=True).add(btnFinish, btnNextStage)
