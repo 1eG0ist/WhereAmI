@@ -7,6 +7,7 @@ from aiogram.contrib.fsm_storage.memory import MemoryStorage
 import logging
 import imarkups as nav
 from isqlighter import SQLighter
+import unittest as U
 
 
 TOKEN = '2144915050:AAFasIxNNZHD8MhSJn2pTnpaNP2mSfLQ0W8'
@@ -22,6 +23,7 @@ dp = Dispatcher(bot, storage=MemoryStorage())
 db = SQLighter('probase.db')
 
 
+@dp.message_handler(Text(equals='!'))
 @dp.message_handler(commands=['subscribe'])
 @dp.message_handler(commands=['start'])
 async def command_start(message: types.Message):
@@ -98,23 +100,27 @@ async def start_waiting_for_number_address(message: types.Message, state: FSMCon
                          f"{user_new_building_data['building_number_address']}",
                          reply_markup=nav.AddingPhotosMenu)
     adding_build(user_new_building_data, user_id)
+    await state.update_data(photos=[[1]])
     await DialogWithUser.next()
 
 
 async def start_adding_photos_from_user(message: types.Message, state: FSMContext):
-    # Выполняется единожды, только в начале
-    if 'lst_of_photos' not in locals() and 'lst_of_photos' not in globals():
-        lst_of_photos = [[]]
-    print(lst_of_photos)
+
     if message.text.lower() == 'следующее':
-        lst_of_photos.append([])
+        a = await state.get_data()
+        a['photos'].append([])
+        await state.update_data(photos=a['photos'])
+
     elif message.text == '✔Завершить':
         await message.answer('Ваши данные успешно загружены в базу данных')
-
         await state.finish()
+
     else:
-        lst_of_photos[-1].append(message.text)
+        a = await state.get_data()
+        a['photos'][-1].append(message.text)
+        await state.update_data(photos=a['photos'])
         await message.answer('Вводи дальше')
+    print(await state.get_data())
 # -------------------------Откат состояния на шаг назад~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
