@@ -7,10 +7,13 @@ from aiogram.contrib.fsm_storage.memory import MemoryStorage
 import logging
 import imarkups as nav
 from isqlighter import SQLighter
-import unittest as U
+from protected_token import TOKEN_copy as T
+import functions as fun
+from functions import StatesFunctions as STF
+from functions import SimpleFunctions as SMLF
 
 
-TOKEN = '2144915050:AAFasIxNNZHD8MhSJn2pTnpaNP2mSfLQ0W8'
+TOKEN = T
 
 # Уровень логгирования
 logging.basicConfig(level=logging.INFO)
@@ -24,12 +27,31 @@ db = SQLighter('probase.db')
 
 
 @dp.message_handler(Text(equals='!'))
-@dp.message_handler(commands=['subscribe'])
-@dp.message_handler(commands=['start'])
+@dp.message_handler(commands=['start', 'subscribe'])
 async def command_start(message: types.Message):
     await bot.send_message(message.from_user.id,
                            'Здарова {0.first_name}'.format(message.from_user),
                            reply_markup=nav.mainMenu)
+
+
+@dp.message_handler(commands=['help'])
+async def command_help(message: types.Message):
+    await bot.send_message(message.from_user.id, "Это бот для нахождения необходимой аудитории в"
+                                                 "учебных заведениях. Для начала работы введите "
+                                                 "'/start' после чего вам будет доступен полный "
+                                                 "функционал бота: \n1. Добавление зданий в избранное "
+                                                 "(как своего так и чужого).\n2. Чтобы найти путь до "
+                                                 "нужного кабинета вам сперва нужно зайти во вкладку "
+                                                 "избранное, после выбрать здание в котором находится "
+                                                 "кабинет, после чего ввести номер нужного кабинета.\n"
+                                                 "3. Чтобы добавить здание в избранное вам нужно сперва "
+                                                 "зайти во вкладку 'другое', после чего выбрать вкладку "
+                                                 "'➕Добавить здание' и зайти во вкладку "
+                                                 "'🔍Добавить существующее в боте здание' и отправить "
+                                                 "наименование вашего здания.\n 4. Для удаления одного "
+                                                 "или всех зданий из избранного вам нужно во вкладке "
+                                                 "'другое' войти во вкладку 'параметры' после чего выбрать "
+                                                 "то, что вам необходимо\n 5. Пока все, Пока!")
 
 # ~~~~~~~~~~~~~Машина состояний добавления нового здания~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -45,10 +67,6 @@ class DialogWithUser(StatesGroup):
 
 @dp.message_handler(Text(equals='🔨📷Добавить здание в бота лично'))
 async def start_dialog_with_user(message: types.Message):
-    # ~~~запоминаем id юзера~~~
-    global user_id
-    user_id = int(message.from_user.id)
-
     await message.answer("1. Введите имя вашего здания: \n Если хотите прервать добавление "
                          "нового здания просто напишите сообщение 'Отмена' в чат, или комманду "
                          "'/отмена'.\nЕсли вы ошиблись, то нажав на кнопку 'Назад', вы вернетесь "
@@ -99,11 +117,13 @@ async def start_waiting_for_number_address(message: types.Message, state: FSMCon
                          f"{user_new_building_data['building_street_address']}, "
                          f"{user_new_building_data['building_number_address']}",
                          reply_markup=nav.AddingPhotosMenu)
-    adding_build(user_new_building_data, user_id)
+    await message.answer(f"Теперь вам нужно вводит картинки с описанием того, куда нужно идти.")
+    SMLF.adding_build(user_new_building_data, int(message.from_user.id))
     await state.update_data(photos=[[1]])
     await DialogWithUser.next()
 
 
+@dp.message_handler(content_types=['photo'])
 async def start_adding_photos_from_user(message: types.Message, state: FSMContext):
 
     if message.text.lower() == 'следующее':
@@ -116,11 +136,10 @@ async def start_adding_photos_from_user(message: types.Message, state: FSMContex
         await state.finish()
 
     else:
-        a = await state.get_data()
-        a['photos'][-1].append(message.text)
-        await state.update_data(photos=a['photos'])
-        await message.answer('Вводи дальше')
-    print(await state.get_data())
+        file_id = message.photo[-1].file_id
+        print(file_id, 12312312)
+        await bot.send_photo(message.from_user.id, file_id)
+
 # -------------------------Откат состояния на шаг назад~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
@@ -282,16 +301,6 @@ def register_existing_handler_buildings(dp: Dispatcher):
     dp.register_message_handler(add_another_building, commands='addexisbuilding', state="*")
     dp.register_message_handler(add_name_of_another_building,
                                 state=Addexistingbuilding.ex_wait_building_name)
-
-
-def adding_build(slovarik, user_id):
-    id_of_user = db.get_user_id(user_id)
-    if len(id_of_user) == 0:
-        db.add_user(user_id)
-        id_of_user = db.get_user_id(user_id)
-    db.add_new_build(id_of_user, slovarik['building_name'], slovarik['number_of_building'],
-                     slovarik['building_town_address'], slovarik['building_street_address'],
-                     slovarik['building_number_address'])
 
 
 register_handler_buildings(dp)
