@@ -27,7 +27,7 @@ class SQLighter:
             self.connection.commit()
 
     def add_new_build(self, user_id, build_name, build_floor_number, build_town_address,
-            build_street_address, build_number_address):
+                      build_street_address, build_number_address):
         """Добавление нового здания"""
         with self.connection:
             idishnik = self.cursor.execute(
@@ -92,6 +92,34 @@ class SQLighter:
                                           f'user_telegram_id = {user_tg_id}'))[0][0],
                     list(self.cursor.execute(f'SELECT id FROM buildings '
                                              f'WHERE build_name = "{name}"'))[0][0]))
+
+        self.connection.commit()
+
+    def add_photo(self, f):
+        pass
+
+    def check_user_on_admin_status(self, user_tg_id: int) -> bool:
+        if (int(user_tg_id),) in list(self.cursor.execute(f"SELECT tg_id_is_admin FROM admins")):
+            return True
+        else:
+            return False
+
+    def check_user_on_photographer_status(self, user_tg_id: int) -> bool:
+        if (int(user_tg_id),) in list(self.cursor.execute(f"SELECT tg_id_is_photographer FROM photographers")):
+            return True
+        else:
+            return False
+
+    def add_new_admin(self, tg_id):
+        with self.connection:
+            self.cursor.execute(f"INSERT INTO 'admins' (tg_id_is_admin) VALUES (?)", (tg_id, ))
+
+        self.connection.commit()
+
+    def add_new_photographer(self, tg_id):
+        with self.connection:
+            self.cursor.execute(f"INSERT INTO 'photographers' (tg_id_is_photographer) VALUES (?)",
+                                (tg_id, ))
 
         self.connection.commit()
 

@@ -8,9 +8,8 @@ import logging
 import imarkups as nav
 from isqlighter import SQLighter
 from protected_token import TOKEN_copy as T
-import functions as fun
-from functions import StatesFunctions as STF
 from functions import SimpleFunctions as SMLF
+from PIL import Image
 
 
 TOKEN = T
@@ -53,7 +52,63 @@ async def command_help(message: types.Message):
                                                  "'другое' войти во вкладку 'параметры' после чего выбрать "
                                                  "то, что вам необходимо\n 5. Пока все, Пока!")
 
-# ~~~~~~~~~~~~~Машина состояний добавления нового здания~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~добавление нового админа~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+class AddNewAdmin(StatesGroup):
+    wait_tg_id_for_add_in_admins = State()
+
+
+@dp.message_handler(commands=['add_admin'])
+async def adding_new_admin(message: types.message):
+    if message.from_user.id != 999734133:
+        await message.answer('У вас нет доступа к этой команде')
+    else:
+        await message.answer("Введите telegram id человека которому вы хотите выдать роль 'admin'")
+        await AddNewAdmin.wait_tg_id_for_add_in_admins.set()
+
+
+async def take_new_admin_tg_id(message: types.Message, state: FSMContext):
+    if message.text.isdigit():
+        if not db.check_user_on_admin_status(message.text):
+            db.add_new_admin(message.text)
+            await message.answer("Пользователю с введенным id успешно выдана роль 'admin'")
+        else:
+            await message.answer("Пользователь с введенным id уже обладает ролью 'admin'")
+        await state.finish()
+    else:
+        await message.answer(f"Вам нужно ввести id -> число")
+
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~Добавление нового человека-фотографа~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+class AddNewPhotographer(StatesGroup):
+    wait_tg_id_for_add_in_photographers = State()
+
+
+@dp.message_handler(commands=['add_photographer'])
+async def adding_new_photographer(message: types.Message):
+    if not db.check_user_on_admin_status(message.from_user.id):
+        await message.answer(f"У вас нет доступа к этой команде")
+    else:
+        await message.answer(f"Введите id пользователя которому вы хотите выдать роль 'photographer'")
+        await AddNewPhotographer.wait_tg_id_for_add_in_photographers.set()
+
+
+async def take_new_photographer_tg_id(message: types.Message, state: FSMContext):
+    if message.text.isdigit():
+        if not db.check_user_on_photographer_status(int(message.text)):
+            db.add_new_photographer(message.text)
+            await message.answer(f"Пользователю с указанным id успешно выдана роль 'photographer'")
+        else:
+            await message.answer(f"Пользователь с указанным id уже обладает ролью 'photographer'")
+        await state.finish()
+    else:
+        await message.answer(f"Вам нужно ввести id -> число")
+
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~Машина состояний добавления нового здания~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
 class DialogWithUser(StatesGroup):
@@ -67,11 +122,15 @@ class DialogWithUser(StatesGroup):
 
 @dp.message_handler(Text(equals='🔨📷Добавить здание в бота лично'))
 async def start_dialog_with_user(message: types.Message):
-    await message.answer("1. Введите имя вашего здания: \n Если хотите прервать добавление "
-                         "нового здания просто напишите сообщение 'Отмена' в чат, или комманду "
-                         "'/отмена'.\nЕсли вы ошиблись, то нажав на кнопку 'Назад', вы вернетесь "
-                         "на один шаг назад.", reply_markup=nav.AddingBuildMenu)
-    await DialogWithUser.waiting_for_building_name.set()
+    if not db.check_user_on_photographer_status(message.from_user.id):
+        await message.answer("К сожалению у вас нет статуса 'admin', "
+                             "который необходим для добавления собственных зданий")
+    else:
+        await message.answer("1. Введите имя вашего здания: \n Если хотите прервать добавление "
+                             "нового здания просто напишите сообщение 'Отмена' в чат, или комманду "
+                             "'/отмена'.\nЕсли вы ошиблись, то нажав на кнопку 'Назад', вы вернетесь "
+                             "на один шаг назад.", reply_markup=nav.AddingBuildMenu)
+        await DialogWithUser.waiting_for_building_name.set()
 
 
 async def start_waiting_for_building_name(message: types.Message, state: FSMContext):
@@ -124,22 +183,32 @@ async def start_waiting_for_number_address(message: types.Message, state: FSMCon
 
 
 @dp.message_handler(content_types=['photo'])
-async def start_adding_photos_from_user(message: types.Message, state: FSMContext):
+async def start_adding_photos_from_user(message: types.callback_query, state: FSMContext):
+    print('func')
+    print(message.content_type)
+    if message.content_type != 'photo':
+        if message.text.lower() == 'следующее':
+            a = await state.get_data()
+            a['photos'].append([])
+            await state.update_data(photos=a['photos'])
 
-    if message.text.lower() == 'следующее':
-        a = await state.get_data()
-        a['photos'].append([])
-        await state.update_data(photos=a['photos'])
+        elif message.text == '✔Завершить':
+            await message.answer('Ваши данные успешно загружены в базу данных')
+            await state.finish()
 
-    elif message.text == '✔Завершить':
-        await message.answer('Ваши данные успешно загружены в базу данных')
-        await state.finish()
-
+        else:
+            await message.answer('Вам нужно прислать фотографию')
     else:
-        file_id = message.photo[-1].file_id
-        print(file_id, 12312312)
-        await bot.send_photo(message.from_user.id, file_id)
-
+        print('else')
+        await message.photo[-1].download('test.jpg')
+        print(message.photo[-1].file_id)
+        build_photo = Image.open(message.photo[-1].file_id)
+        build_photo.show()
+        print(build_photo)
+        await bot.send_photo(message.from_user.id, build_photo)
+        # file_info = await bot.get_file(message.photo[-1].file_id)
+        # await message.photo[-1].download(file_info.file_path.split('photos/')[1])
+    print('end')
 # -------------------------Откат состояния на шаг назад~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
@@ -299,12 +368,26 @@ def register_handler_buildings(dp: Dispatcher):
 
 def register_existing_handler_buildings(dp: Dispatcher):
     dp.register_message_handler(add_another_building, commands='addexisbuilding', state="*")
-    dp.register_message_handler(add_name_of_another_building,
+    dp.register_message_handler(add_name_of_another_building, content_types='text',
                                 state=Addexistingbuilding.ex_wait_building_name)
+
+
+def register_adding_new_admin_func(dp: Dispatcher):
+    dp.register_message_handler(adding_new_admin, commands='add_admin', state='*')
+    dp.register_message_handler(take_new_admin_tg_id, content_types='text',
+                                state=AddNewAdmin.wait_tg_id_for_add_in_admins)
+
+
+def register_adding_new_photographer_func(dp: Dispatcher):
+    dp.register_message_handler(adding_new_photographer, commands='add_photographer', state='*')
+    dp.register_message_handler(take_new_photographer_tg_id, content_types='text',
+                                state=AddNewPhotographer.wait_tg_id_for_add_in_photographers)
 
 
 register_handler_buildings(dp)
 register_existing_handler_buildings(dp)
+register_adding_new_admin_func(dp)
+register_adding_new_photographer_func(dp)
 
 if __name__ == '__main__':
     executor.start_polling(dp, skip_updates=True)

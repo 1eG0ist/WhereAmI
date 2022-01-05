@@ -16,7 +16,6 @@ class StatesFunctions:
     pass
 
 
-
 class SimpleFunctions:
 
     # ~~~Проверка на корректность -> передача в базу данных~~~
