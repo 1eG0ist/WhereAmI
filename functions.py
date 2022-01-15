@@ -13,7 +13,12 @@ db = SQLighter('probase.db')
 
 class StatesFunctions:
 
-    pass
+    @staticmethod
+    def convertToBinaryData(filename):
+        # Convert digital data to binary format
+        with open(filename, 'rb') as file:
+            blobdata = file.read()
+        return blobdata
 
 
 class SimpleFunctions:

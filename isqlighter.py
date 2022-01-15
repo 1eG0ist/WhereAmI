@@ -95,9 +95,6 @@ class SQLighter:
 
         self.connection.commit()
 
-    def add_photo(self, f):
-        pass
-
     def check_user_on_admin_status(self, user_tg_id: int) -> bool:
         if (int(user_tg_id),) in list(self.cursor.execute(f"SELECT tg_id_is_admin FROM admins")):
             return True
@@ -120,6 +117,13 @@ class SQLighter:
         with self.connection:
             self.cursor.execute(f"INSERT INTO 'photographers' (tg_id_is_photographer) VALUES (?)",
                                 (tg_id, ))
+
+        self.connection.commit()
+
+    def add_photo(self, im_id):
+        with self.connection:
+            print(type(im_id))
+            self.cursor.execute(f"INSERT INTO 'phototest' (photo) VALUES (?)", (im_id, ))
 
         self.connection.commit()
 

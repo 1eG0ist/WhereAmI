@@ -1,5 +1,5 @@
 from aiogram import Bot, Dispatcher, executor, types
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, ContentType
 from aiogram.dispatcher.filters.state import State, StatesGroup
 from aiogram.dispatcher.filters import Text
 from aiogram.dispatcher import FSMContext
@@ -10,6 +10,7 @@ from isqlighter import SQLighter
 from protected_token import TOKEN_copy as T
 from functions import SimpleFunctions as SMLF
 from PIL import Image
+from constants import size_of_photo
 
 
 TOKEN = T
@@ -71,8 +72,11 @@ async def adding_new_admin(message: types.message):
 async def take_new_admin_tg_id(message: types.Message, state: FSMContext):
     if message.text.isdigit():
         if not db.check_user_on_admin_status(message.text):
-            db.add_new_admin(message.text)
-            await message.answer("Пользователю с введенным id успешно выдана роль 'admin'")
+            if len(str(message.text)) > 10 or len(str(message.text)) < 8:
+                await message.answer("Пользователя с таким id не может существовать")
+            else:
+                db.add_new_admin(message.text)
+                await message.answer("Пользователю с введенным id успешно выдана роль 'admin'")
         else:
             await message.answer("Пользователь с введенным id уже обладает ролью 'admin'")
         await state.finish()
@@ -99,8 +103,11 @@ async def adding_new_photographer(message: types.Message):
 async def take_new_photographer_tg_id(message: types.Message, state: FSMContext):
     if message.text.isdigit():
         if not db.check_user_on_photographer_status(int(message.text)):
-            db.add_new_photographer(message.text)
-            await message.answer(f"Пользователю с указанным id успешно выдана роль 'photographer'")
+            if len(str(message.text)) > 10 or len(str(message.text)) < 8:
+                await message.answer("Пользователя с таким id не может существовать")
+            else:
+                db.add_new_photographer(message.text)
+                await message.answer(f"Пользователю с указанным id успешно выдана роль 'photographer'")
         else:
             await message.answer(f"Пользователь с указанным id уже обладает ролью 'photographer'")
         await state.finish()
@@ -182,11 +189,8 @@ async def start_waiting_for_number_address(message: types.Message, state: FSMCon
     await DialogWithUser.next()
 
 
-@dp.message_handler(content_types=['photo'])
-async def start_adding_photos_from_user(message: types.callback_query, state: FSMContext):
-    print('func')
-    print(message.content_type)
-    if message.content_type != 'photo':
+async def start_adding_photos_from_user(message: types.Message, state: FSMContext):
+    if message.content_type not in ['photo', 'sticker']:
         if message.text.lower() == 'следующее':
             a = await state.get_data()
             a['photos'].append([])
@@ -199,16 +203,13 @@ async def start_adding_photos_from_user(message: types.callback_query, state: FS
         else:
             await message.answer('Вам нужно прислать фотографию')
     else:
-        print('else')
         await message.photo[-1].download('test.jpg')
-        print(message.photo[-1].file_id)
-        build_photo = Image.open(message.photo[-1].file_id)
-        build_photo.show()
-        print(build_photo)
-        await bot.send_photo(message.from_user.id, build_photo)
+        photo2 = Image.open('test.jpg').resize(size_of_photo)
+        photo2.show()
+
+        await bot.send_photo(message.from_user.id, photo2)
         # file_info = await bot.get_file(message.photo[-1].file_id)
         # await message.photo[-1].download(file_info.file_path.split('photos/')[1])
-    print('end')
 # -------------------------Откат состояния на шаг назад~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
@@ -307,10 +308,13 @@ async def delete_from_fav_building(message: types.Message):
 # ~~~~~~~~~~~~~~~~~~~~~~~~Связь и взаимодействия главного меню~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
-@dp.message_handler()
+@dp.message_handler(content_types=ContentType.ANY)
 async def bot_message(message: types.Message):
+    print(message.content_type)
     if message.text == '⬅Главное меню':
         await bot.send_message(message.from_user.id, '*ГЛАВНОЕ МЕНЮ*', reply_markup=nav.mainMenu)
+    elif message.content_type == 'sticker':
+        await message.answer('12345')
     elif message.text == '💕Избранное':
         await bot.send_message(message.from_user.id, '*ИЗБРАННОЕ*', reply_markup=nav.LikeMenu)
 
@@ -362,8 +366,8 @@ def register_handler_buildings(dp: Dispatcher):
     dp.register_message_handler(start_waiting_for_number_address,
                                 state=DialogWithUser.waiting_for_number_address)
 
-    dp.register_message_handler(start_adding_photos_from_user,
-                                state=DialogWithUser.adding_photos_from_user)
+    dp.register_message_handler(start_adding_photos_from_user, content_types=['sticker', 'photo'],
+                               state=DialogWithUser.adding_photos_from_user)
 
 
 def register_existing_handler_buildings(dp: Dispatcher):
