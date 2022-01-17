@@ -240,7 +240,7 @@ class Addexistingbuilding(StatesGroup):
     ex_wait_building_name = State()
 
 
-@dp.message_handler(Text(equals='🔍Добавить существующее в боте здание'))
+@dp.message_handler(Text(equals='🔍Добавить в избранное'))
 async def add_another_building(message: types.Message):
     await bot.send_message(message.from_user.id,
                            'Введите имя здания которое вы хотите найти',
@@ -253,23 +253,26 @@ async def add_name_of_another_building(message: types.Message, state: FSMContext
         if len(db.check_on_added_buildings_of_user(message.text.lower(), int(message.from_user.id))) == 0:
             db.add_another_building_to_user(message.text.lower(), int(message.from_user.id))
             await message.answer(f"Здание {message.text} успешно добавлено в избранное.",
-                                 reply_markup=nav.AddingChoiceMenu)
+                                 reply_markup=nav.FollowMenu)
         else:
             await message.answer(f"Здание под название {message.text} уже есть у вас в избранном.",
-                                 reply_markup=nav.AddingChoiceMenu)
+                                 reply_markup=nav.FollowMenu)
     else:
         await bot.send_message(message.from_user.id, "Похоже, что такого здания в нашего бота еще не "
                                                      "добавляли, проверьте правильно ли вы ввели имя "
                                                      "вашего здания, если да, то предлагаем вам самим "
                                                      "добавить ваше здание.",
-                               reply_markup=nav.AddingChoiceMenu)
+                               reply_markup=nav.FollowMenu)
     await state.finish()
 
 
 # ~~~~~~~~~~~~~~~~~~~~Функция избранного берущая данные из бд~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
-@dp.message_handler(Text(equals='💕Избранное'))
+class GiveFollowList(StatesGroup):
+    
+# 💕Избранное
+@dp.message_handler(Text(equals='📄Список избранного'))
 async def favourites_buildings(message: types.Message):
     url_keyboard = InlineKeyboardMarkup(row_width=2)
     id_user = int(message.from_user.id)
@@ -286,20 +289,25 @@ async def favourites_buildings(message: types.Message):
 # ~~~~~~~~~~~~~~~~~~~~~~~Функция удаления здания из избранного~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
+class DellOneBuild(StatesGroup):
+    hold_for_build_name = State()
+
+
 @dp.message_handler(Text(equals='‼Удалить ОДНО здание'))
 async def delete_from_fav_building(message: types.Message):
     url_keyboard = InlineKeyboardMarkup(row_width=2)
-    id_user = int(message.from_user.id)
-    favour_list = db.show_favourites_user_buildings(id_user)
+    favour_list = db.show_favourites_user_buildings(int(message.from_user.id))
     for i in favour_list:
         url_keyboard.add(InlineKeyboardButton(i, callback_data=i))
     await message.answer('Ваши здания', reply_markup=url_keyboard)
+    await DellOneBuild.hold_for_build_name.set()
 
-    @dp.callback_query_handler(lambda c: c.data in favour_list)
-    async def reverse_status_user_with_build(callback_query: types.CallbackQuery):
-        db.delete_building_from_user(callback_query['data'], id_user)
-        await bot.send_message(message.from_user.id, f"Здание {callback_query['data']}"
-                                                     f" было удалено из списка избранных")
+
+async def reverse_status_user_with_build(callback_query: types.CallbackQuery, state: FSMContext):
+    db.delete_building_from_user(callback_query['data'], int(callback_query.from_user.id))
+    await bot.send_message(callback_query.from_user.id, f"Здание {callback_query['data']}"
+                                                        f" было удалено из списка избранных")
+    await state.finish()
 
 # ~~~~~~~~~~~~~~~~~~~~~~~Функция удаления всех здания из избранного~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -318,14 +326,14 @@ async def bot_message(message: types.Message):
     elif message.content_type == 'sticker':
         await message.answer('Ты прислал мне стикер')
     elif message.text == '💕Избранное':
-        await bot.send_message(message.from_user.id, '*ИЗБРАННОЕ*', reply_markup=nav.LikeMenu)
+        await bot.send_message(message.from_user.id, '*ИЗБРАННОЕ*', reply_markup=nav.FollowMenu)
 
     elif message.text == 'Другое➱':
         await bot.send_message(message.from_user.id, '*ДРУГОЕ*',
                                reply_markup=nav.otherMenu)
 
-    elif message.text == '⚙Параметры':
-        await bot.send_message(message.from_user.id, '*Меню параметров*', reply_markup=nav.SettingsMenu)
+    elif message.text == '➖Удаление из избранного':
+        await bot.send_message(message.from_user.id, '*Меню удаления*', reply_markup=nav.SettingsMenu)
 
     elif message.text == '📜Показать все здания':
         await bot.send_message(message.from_user.id, 'Тут надо из SQLite взять все здания')
@@ -339,7 +347,8 @@ async def bot_message(message: types.Message):
                                reply_markup=nav.AddingChoiceMenu)
 
     elif message.text == '⚠❗⛔УДАЛИТЬ ВСЕ ЗДАНИЯ БЕЗВОЗВРАТНО':
-        await bot.send_message(message.from_user.id, 'тут вот типо удалится вся бд с значениями зданий')
+        await bot.send_message(message.from_user.id, 'Все значения из вашего списка избранного удалены')
+        db.delete_all_buildings_from_user(message.from_user.id)
 
     elif message.text == '✚❥Добавить в избранное':
         await bot.send_message(message.from_user.id, 'Грустно')
@@ -369,7 +378,7 @@ def register_handler_buildings(dp: Dispatcher):
                                 state=DialogWithUser.waiting_for_number_address)
 
     dp.register_message_handler(start_adding_photos_from_user, content_types=['sticker', 'photo'],
-                               state=DialogWithUser.adding_photos_from_user)
+                                state=DialogWithUser.adding_photos_from_user)
 
 
 def register_existing_handler_buildings(dp: Dispatcher):
@@ -390,10 +399,16 @@ def register_adding_new_photographer_func(dp: Dispatcher):
                                 state=AddNewPhotographer.wait_tg_id_for_add_in_photographers)
 
 
+def register_del_building(dp: Dispatcher):
+    dp.register_message_handler(delete_from_fav_building, state='*')
+    dp.register_callback_query_handler(reverse_status_user_with_build, state=DellOneBuild.hold_for_build_name)
+
+
 register_handler_buildings(dp)
 register_existing_handler_buildings(dp)
 register_adding_new_admin_func(dp)
 register_adding_new_photographer_func(dp)
+register_del_building(dp)
 
 if __name__ == '__main__':
     executor.start_polling(dp, skip_updates=True)
