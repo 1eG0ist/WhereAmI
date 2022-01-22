@@ -12,15 +12,13 @@ from functions import SimpleFunctions as SMLF
 from functions import StatesFunctions as STFUNC
 from PIL import Image
 from constants import size_of_photo
-from io import BytesIO
-
-TOKEN = T
+import re
 
 # Уровень логгирования
 logging.basicConfig(level=logging.INFO)
 
 # Инициализируем бота
-bot = Bot(token=TOKEN)
+bot = Bot(token=T)
 dp = Dispatcher(bot, storage=MemoryStorage())
 
 # Инициализация соединения с БД
@@ -125,6 +123,7 @@ class DialogWithUser(StatesGroup):
     waiting_for_town_address = State()
     waiting_for_street_address = State()
     waiting_for_number_address = State()
+    waiting_for_office_numbers = State()
     adding_photos_from_user = State()
 
 
@@ -184,9 +183,38 @@ async def start_waiting_for_number_address(message: types.Message, state: FSMCon
                          f"{user_new_building_data['building_street_address']}, "
                          f"{user_new_building_data['building_number_address']}",
                          reply_markup=nav.AddingPhotosMenu)
-    await message.answer(f"Теперь вам нужно вводит картинки с описанием того, куда нужно идти.")
+    await message.answer(f"Введите номера всех кабинетов через запятую, если номера кабинетов идут подряд, то вы "
+                         f"можете указать их так: 557-560.\nОбратите внимание, меньшее число слева-большее справа. "
+                         f"Рекомендуем в целом добавлять кабинеты от меньшего к большему")
     SMLF.adding_build(user_new_building_data, int(message.from_user.id))
     await state.update_data(photos=[[1]])
+    await DialogWithUser.next()
+
+
+async def take_numbers_of_building(message: types.Message, state: FSMContext):
+    mtext = message.text
+    offices_list = []
+    try:
+        for number in mtext.split(','):
+            if number.count('-') > 1:
+                await message.answer("К сожалению вы неверно составили сообщение и указали лишнее -, "
+                                     "пожалуйста введите перечень кабинетов еще раз")
+                await DialogWithUser.previous()
+                await DialogWithUser.next()
+            elif number.count('-') == 1:
+                for i in range(int(number.split('-')[0]), int(number.split('-')[1])+1):
+                    offices_list.append(i)
+            else:
+                offices_list.append(number)
+    except Exception:
+        await message.answer("Что-то пошло не так, пожалуйста перепроверьте перечень кабинетов еще раз и отправьте "
+                             "его заново")
+        await DialogWithUser.previous()
+        await DialogWithUser.next()
+
+    offices_list = list(map(int, offices_list))
+    await state.update_data(offices_list=offices_list)
+    await message.answer("Теперь пожалуйста вводите фотографии")
     await DialogWithUser.next()
 
 
@@ -213,6 +241,7 @@ async def start_adding_photos_from_user(message: types.Message, state: FSMContex
         await bot.send_photo(message.from_user.id, photo1)
         # file_info = await bot.get_file(message.photo[-1].file_id)
         # await message.photo[-1].download(file_info.file_path.split('photos/')[1])
+
 # -------------------------Откат состояния на шаг назад~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
@@ -269,52 +298,66 @@ async def add_name_of_another_building(message: types.Message, state: FSMContext
 # ~~~~~~~~~~~~~~~~~~~~Функция избранного берущая данные из бд~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
-class GiveFollowList(StatesGroup):
-    
-# 💕Избранное
+class WayToOffice(StatesGroup):
+    follow_list_wait_for_building_name = State()
+    wait_for_office_number = State()
+
+
 @dp.message_handler(Text(equals='📄Список избранного'))
 async def favourites_buildings(message: types.Message):
     url_keyboard = InlineKeyboardMarkup(row_width=2)
-    id_user = int(message.from_user.id)
-    favour_list = db.show_favourites_user_buildings(id_user)
+    favour_list = db.show_favourites_user_buildings(int(message.from_user.id))
+    if len(favour_list) == 0:
+        await message.answer("У вас в избранном пока нет ни одного здания")
+        return
     for i in favour_list:
         url_keyboard.add(InlineKeyboardButton(i, callback_data=i))
-    await message.answer('Ваши здания', reply_markup=url_keyboard)
-    db.show_all_buildings_names()
+    await message.answer('Ваши здания, если вам не нужно выбирать здание Введите сообщение Отмена',
+                         reply_markup=url_keyboard)
+    await WayToOffice.follow_list_wait_for_building_name.set()
 
-    @dp.callback_query_handler(lambda c: c.data in favour_list)
-    async def reaction_on_favourites_buildings(callback_query: types.CallbackQuery):
-        await bot.answer_callback_query(callback_query.id, callback_query['data'])
+
+async def reaction_on_favourites_buildings(callback: types.CallbackQuery, state: FSMContext):
+    await callback.answer(callback['data'])
+    await state.update_data(bulding=callback['data'])
+    await bot.send_message(int(callback.from_user.id), "Введите номер кабинета")
+    await WayToOffice.next()
+
+
+async def take_number_of_building(message: types.Message, state: FSMContext):
+    await bot.send_message(int(message.from_user.id), "Тут вот путь тебе в будущем отправят до кабинета")
+    await state.update_data(office_number=message.text)
+    await state.finish()
+
 
 # ~~~~~~~~~~~~~~~~~~~~~~~Функция удаления здания из избранного~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
 class DellOneBuild(StatesGroup):
-    hold_for_build_name = State()
+    hold_for_building_name = State()
 
 
 @dp.message_handler(Text(equals='‼Удалить ОДНО здание'))
 async def delete_from_fav_building(message: types.Message):
     url_keyboard = InlineKeyboardMarkup(row_width=2)
     favour_list = db.show_favourites_user_buildings(int(message.from_user.id))
+    if len(favour_list) == 0:
+        await message.answer("У вас пока нет зданий, которые можно было бы удалить")
+        return
     for i in favour_list:
-        url_keyboard.add(InlineKeyboardButton(i, callback_data=i))
+        url_keyboard.add(InlineKeyboardButton(i, callback_data=f"DELONE_{i}"))
     await message.answer('Ваши здания', reply_markup=url_keyboard)
-    await DellOneBuild.hold_for_build_name.set()
+    await DellOneBuild.hold_for_building_name.set()
 
 
-async def reverse_status_user_with_build(callback_query: types.CallbackQuery, state: FSMContext):
-    db.delete_building_from_user(callback_query['data'], int(callback_query.from_user.id))
-    await bot.send_message(callback_query.from_user.id, f"Здание {callback_query['data']}"
+async def reverse_status_user_with_building(callback_query: types.CallbackQuery, state: FSMContext):
+    print(callback_query['data'].split('_')[1])
+    db.delete_building_from_user(callback_query['data'].split('_')[1], int(callback_query.from_user.id))
+    await bot.send_message(callback_query.from_user.id, f"Здание {callback_query['data'].split('_')[1]}"
                                                         f" было удалено из списка избранных")
+    await callback_query.answer(callback_query['data'].split('_')[1])
     await state.finish()
 
-# ~~~~~~~~~~~~~~~~~~~~~~~Функция удаления всех здания из избранного~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-
-@dp.message_handler(Text(equals='⚠❗⛔УДАЛИТЬ ВСЕ ЗДАНИЯ ИЗ ИЗБРАННОГО БЕЗВОЗВРАТНО'))
-async def delete_from_fav_building(message: types.Message):
-    db.delete_all_buildings_from_user(int(message.from_user.id))
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~Связь и взаимодействия главного меню~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -323,8 +366,10 @@ async def delete_from_fav_building(message: types.Message):
 async def bot_message(message: types.Message):
     if message.text == '⬅Главное меню':
         await bot.send_message(message.from_user.id, '*ГЛАВНОЕ МЕНЮ*', reply_markup=nav.mainMenu)
+
     elif message.content_type == 'sticker':
         await message.answer('Ты прислал мне стикер')
+
     elif message.text == '💕Избранное':
         await bot.send_message(message.from_user.id, '*ИЗБРАННОЕ*', reply_markup=nav.FollowMenu)
 
@@ -335,32 +380,27 @@ async def bot_message(message: types.Message):
     elif message.text == '➖Удаление из избранного':
         await bot.send_message(message.from_user.id, '*Меню удаления*', reply_markup=nav.SettingsMenu)
 
-    elif message.text == '📜Показать все здания':
-        await bot.send_message(message.from_user.id, 'Тут надо из SQLite взять все здания')
-
     elif message.text == '⛔Удалить ВСЕ здания':
         await bot.send_message(message.from_user.id,
-                    'Если вы действительно хотите удалить все здания нажмите на кнопку удаления еще раз',
+                               'Если вы действительно хотите удалить все здания нажмите на кнопку удаления еще раз',
                                reply_markup=nav.DelAllBuildsMenu)
+
     elif message.text == '➕Добавить здание':
-        await bot.send_message(message.from_user.id, 'Выберите что вам нужно',
+        await bot.send_message(message.from_user.id,
+                               'Имейте ввиде, эта функция доступна только людям, с определенной ролью',
                                reply_markup=nav.AddingChoiceMenu)
 
-    elif message.text == '⚠❗⛔УДАЛИТЬ ВСЕ ЗДАНИЯ БЕЗВОЗВРАТНО':
-        await bot.send_message(message.from_user.id, 'Все значения из вашего списка избранного удалены')
-        db.delete_all_buildings_from_user(message.from_user.id)
-
-    elif message.text == '✚❥Добавить в избранное':
-        await bot.send_message(message.from_user.id, 'Грустно')
+    elif message.text == '⚠❗⛔УДАЛИТЬ ВСЕ ЗДАНИЯ ИЗ ИЗБРАННОГО БЕЗВОЗВРАТНО':
+        db.delete_all_buildings_from_user(int(message.from_user.id))
 
     else:
-        await message.reply('ЭТО ШТО 0_о, не понял... НОрмально общайся!')
+        await message.reply('Мне немного не понятно, что именно вы имели ввиду, попробуйте заново')
 
 
 def register_handler_buildings(dp: Dispatcher):
     dp.register_message_handler(start_dialog_with_user, commands='building', state="*")
     dp.register_message_handler(cmd_cancel, state="*", commands="отмена")
-    dp.register_message_handler(cmd_cancel, Text(equals="отмена", ignore_case=True), state="*")
+    dp.register_message_handler(cmd_cancel, Text(equals="Отмена"), state="*")
     dp.register_message_handler(cmd_previous, Text(equals="назад", ignore_case=True), state="*")
     dp.register_message_handler(start_waiting_for_building_name,
                                 state=DialogWithUser.waiting_for_building_name)
@@ -377,7 +417,11 @@ def register_handler_buildings(dp: Dispatcher):
     dp.register_message_handler(start_waiting_for_number_address,
                                 state=DialogWithUser.waiting_for_number_address)
 
-    dp.register_message_handler(start_adding_photos_from_user, content_types=['sticker', 'photo'],
+    dp.register_message_handler(take_numbers_of_building,
+                                state=DialogWithUser.waiting_for_office_numbers)
+
+    dp.register_message_handler(start_adding_photos_from_user,
+                                content_types=['sticker', 'photo', 'text'],  # нужно обработать ввод текста
                                 state=DialogWithUser.adding_photos_from_user)
 
 
@@ -400,15 +444,25 @@ def register_adding_new_photographer_func(dp: Dispatcher):
 
 
 def register_del_building(dp: Dispatcher):
-    dp.register_message_handler(delete_from_fav_building, state='*')
-    dp.register_callback_query_handler(reverse_status_user_with_build, state=DellOneBuild.hold_for_build_name)
+    dp.register_message_handler(delete_from_fav_building, Text(equals='‼Удалить ОДНО здание'), state='*')
+    dp.register_callback_query_handler(reverse_status_user_with_building, state=DellOneBuild.hold_for_building_name)
 
 
+def register_way_to_office(dp: Dispatcher):
+    dp.register_message_handler(favourites_buildings, Text(equals="📄Список избранного"), state='*')
+    dp.register_callback_query_handler(reaction_on_favourites_buildings,
+                                       state=WayToOffice.follow_list_wait_for_building_name)
+    dp.register_message_handler(take_number_of_building,
+                                state=WayToOffice.wait_for_office_number)
+
+
+register_way_to_office(dp)
 register_handler_buildings(dp)
 register_existing_handler_buildings(dp)
 register_adding_new_admin_func(dp)
 register_adding_new_photographer_func(dp)
 register_del_building(dp)
+
 
 if __name__ == '__main__':
     executor.start_polling(dp, skip_updates=True)
