@@ -218,7 +218,12 @@ async def take_numbers_of_building(message: types.Message, state: FSMContext):
                 offices_list.append(number)
         offices_list = list(map(int, offices_list))
         await state.update_data(offices_list=offices_list)
-        await message.answer("Теперь пожалуйста введите фотографию входа в ваше здание(внутри, спиной к входной двери)")
+        await message.answer("Теперь пожалуйста введите фотографию входа в ваше здание(внутри, спиной к входной "
+                             "двери) и подпишите как <ВХОД>........ ВАЖНО, когда ветвь ваших фотографий закончится и "
+                             "вы будете переходить к другой ВАМ НУЖНО УКАЗАТЬ В ПРИКРЕПЛЕННОМ К ФОТО ТЕКСТЕ "
+                             "!!!!ИСКЛЮЧИТЕЛЬНО!!!! ЕГО НОМЕР И НИЧЕГО БОЛЬШЕ!!!!, когда вы добавите все кабинеты "
+                             "для того чтобы выйти вам нужно будет ввести команду stop, т.е. вам нужно будет ввести "
+                             "/stop")
         await DialogWithUser.next()
 
     except Exception:
@@ -231,45 +236,50 @@ async def adding_entrance_of_building(message: types.Message, state: FSMContext)
         # Скачиваем фотографию в детализации 1, где 0-мыло, 1-норм, 2-хорошо, 3-изначальное разрешение
         await message.photo[1].download('photo_beta.jpg')
 
-        # Скачиваем уже сжатое до значения константы фото под именем photo.jpg
+        # Скачиваем уже сжатое до значения 1 фото под именем photo.jpg
         Image.open('photo_beta.jpg').save('photo.jpg')
 
-        # Переводим сжатое фотографию в бинарный формат
+        # Переводим сжатое изображение в бинарный формат
         photo1 = STFUNC.convert_to_binary_data('photo.jpg')
-        building_data = await state.get_data()
 
         # Добавляем значения и фотографию в бин.виде в бд
-        await db.add_photo_in_graph(photo1, building_data['building_name'], 0, 0, message.caption)
-        await message.answer(f"Принято, теперь пожалуйста введите кол-во лестниц(главных, от которых после будут "
-                             f"разветвляться пути)")
-        if message.text == '✔Завершить':
-            await message.answer('Ваши данные успешно загружены в базу данных')
-            await state.finish()
+        building_data = await state.get_data()
+        graph_id = db.add_photo_in_graph(photo1, building_data['building_name'], message.caption, -1)
+        await message.answer(f"Хорошо, теперь корень вашего ветвления из фотографий в базе данных "
+                             f"имеет id номер |||| {graph_id} ||||, теперь, когда захотите пустить ветвь фотографий "
+                             f"начиная от этой фотографии, вам нужно будет указать этот id, С ЭТОГО МОМЕНТА ПОДПИСЬ "
+                             f"К ВАШИМ ФОТОГРАФИЯМ ДОЛЖНА ИМЕТЬ ТАКОЙ ВИД(не указывайте кавычки) - \n<описание>+++<id"
+                             f" фотографии, которая является родителем этой фотографии>")
+        await DialogWithUser.next()
 
-    except ValueError:
+    except Exception:
         await message.answer("Что-то пошло не так, пожалуйста повторите попытку")
+
+# Рекурсивная функция, которая будет проходиться по дереву фотографий должна будет делать это до тех пор пока
+# не встретит значение -1 в столбце parent таблицы graph, создав массив я буду передавать его в рекурсивный вызов
+# функции и накапливать фотографии от кабинета до входа, а после разверну и отправлю пользователю
 
 
 async def start_adding_photos_from_user(message: types.Message, state: FSMContext):
-    if message.content_type not in ['photo', 'sticker']:
-        if message.text.lower() == 'следующее':
-            a = await state.get_data()
-            a['photos'].append([])
-            await state.update_data(photos=a['photos'])
+    try:
+        # Скачиваем фотографию в детализации 1, где 0-мыло, 1-норм, 2-хорошо, 3-изначальное разрешение
+        await message.photo[1].download('photo_beta.jpg')
 
-        elif message.text == '✔Завершить':
-            await message.answer('Ваши данные успешно загружены в базу данных')
-            await state.finish()
+        # Скачиваем уже сжатое до значения 1 фото под именем photo.jpg
+        Image.open('photo_beta.jpg').save('photo.jpg')
 
-        else:
-            await message.answer('Вам нужно прислать фотографию')
-    else:
-        await message.photo[1].download('photo.jpg')
-        user_photo = Image.open('photo.jpg')
+        # Переводим сжатое изображение в бинарный формат
         photo1 = STFUNC.convert_to_binary_data('photo.jpg')
-        db.add_photo(photo1)
 
-        await bot.send_photo(message.from_user.id, photo1)
+        text = message.caption.split("+++")
+        building_data = await state.get_data()
+        graph_id = db.add_photo_in_graph(photo1, building_data['building_name'], text[0], text[1])
+        await message.answer(f"id этой фотографии - {graph_id}")
+
+    except Exception:
+        await message.answer("Что-то пошло не так, пожалуйста отправьте фотографию заново, или разочаруйтесь в жизни, "
+                             "кстати возможно вы указали id фотографии которого не существует, так что убедитесь, "
+                             "что бот отправлял в ответ на ваше фото id, которое вы указали")
 
 # -------------------------Откат состояния на шаг назад~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -286,6 +296,7 @@ async def cmd_previous(message: types.Message, state: FSMContext):
 # --------------------Функция прерывания работы состояний~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
+@dp.message_handler(commands=['stop'])
 @dp.message_handler(Text(equals='Отмена'))
 async def cmd_cancel(message: types.Message, state: FSMContext):
     await state.finish()
@@ -341,21 +352,25 @@ async def favourites_buildings(message: types.Message):
         return
     for i in favour_list:
         url_keyboard.add(InlineKeyboardButton(i, callback_data=i))
-    await message.answer('Ваши здания, если вам не нужно выбирать здание Введите сообщение Отмена',
+    await message.answer('Ваши здания',
                          reply_markup=url_keyboard)
     await WayToOffice.follow_list_wait_for_building_name.set()
 
 
 async def reaction_on_favourites_buildings(callback: types.CallbackQuery, state: FSMContext):
     await callback.answer(callback['data'])
-    await state.update_data(bulding=callback['data'])
+    await state.update_data(building=callback['data'])
     await bot.send_message(int(callback.from_user.id), "Введите номер кабинета")
     await WayToOffice.next()
 
 
 async def take_number_of_building(message: types.Message, state: FSMContext):
     await bot.send_message(int(message.from_user.id), "Тут вот путь тебе в будущем отправят до кабинета")
-    await state.update_data(office_number=message.text)
+    data = await state.get_data()
+    graph_id = db.search_for_needed_id(data['building'], message.text)
+    offices_list = db.search_for_needed_office(graph_id, [])
+    for i in range(len(offices_list)-1, -1, -1):
+        await bot.send_photo(message.from_user.id, offices_list[i][0], offices_list[i][1])
     await state.finish()
 
 
@@ -429,7 +444,7 @@ async def bot_message(message: types.Message):
 
 def register_handler_buildings(dp: Dispatcher):
     dp.register_message_handler(start_dialog_with_user, commands='building', state="*")
-    dp.register_message_handler(cmd_cancel, state="*", commands="отмена")
+    dp.register_message_handler(cmd_cancel, state="*", commands="stop")
     dp.register_message_handler(cmd_cancel, Text(equals="Отмена"), state="*")
     dp.register_message_handler(cmd_previous, Text(equals="назад", ignore_case=True), state="*")
     dp.register_message_handler(start_waiting_for_building_name,

@@ -10,7 +10,6 @@ class SQLighter:
 
     def get_user_id(self, user_telegram_id):
         """Все здания человека"""
-        print(user_telegram_id)
         with self.connection:
             return self.cursor.execute(
                 "SELECT id FROM 'user' WHERE user_telegram_id = ?",
@@ -124,30 +123,38 @@ class SQLighter:
 
         self.connection.commit()
 
-    def add_photo(self, im_id):
-        with self.connection:
-            self.cursor.execute(f"INSERT INTO 'phototest' (photo) VALUES (?)", (im_id, ))
-
-        self.connection.commit()
-
-    def add_photo_in_graph(self, photo, name, number_of_control_dot, step_on_control_dot, text):
+    def add_photo_in_graph(self, photo, name, text, parent):
         b_id = list(self.cursor.execute(f"SELECT id FROM buildings WHERE buildings.build_name = '{name}'"))
         graph_id = max(set(self.cursor.execute(f"SELECT id FROM graph")))[0]+1
         with self.connection:
-            self.cursor.execute(f"INSERT INTO 'graph' (id, building_id, photo) VALUES (?, ?, ?)", (
-                graph_id, b_id[0][0], photo
-            ))
-
-        self.connection.commit()
-
-        with self.connection:
-            self.cursor.execute(f"INSERT INTO 'info_about_photo' (graph_id, number_of_control_dot, "
-                                f"number_of_step_on_ones_control_dot, description) VALUES (?, ?, ?, ?)", (
-                graph_id, number_of_control_dot, step_on_control_dot, text
+            self.cursor.execute(f"INSERT INTO 'graph' (id, building_id, photo, description, parent_id) "
+                                f"VALUES (?, ?, ?, ?, ?)", (
+                graph_id, b_id[0][0], photo, text, parent
             ))
 
         self.connection.commit()
         return graph_id
+
+    def add_child_to_photo(self, graph_id, child_id_in_graph):
+        with self.connection:
+            self.cursor.execute(f"INSERT INTO 'child_of_photo' (graph_id, child_id_in_graph)", (
+                graph_id, child_id_in_graph
+            ))
+
+    def search_for_needed_id(self, name: str, office_number: str) -> int:
+        parent = list(self.cursor.execute(f"SELECT id FROM graph WHERE building_id = (SELECT id FROM buildings WHERE "
+                                          f"build_name = '{name}') AND description = {str(office_number)}"))
+        return parent[0][0]
+
+    def search_for_needed_office(self, graph_id: int, offices_list: list) -> list:
+        parent = list(self.cursor.execute(f"SELECT parent_id FROM graph WHERE id = {graph_id}"))[0][0]
+        photo = list(self.cursor.execute(f"SELECT photo FROM graph WHERE id = {graph_id}"))[0][0]
+        description = list(self.cursor.execute(f"SELECT description FROM graph where id = {graph_id}"))[0][0]
+        offices_list.append([photo, description])
+        if parent == -1 or parent == '-1':
+            return offices_list
+        else:
+            return SQLighter.search_for_needed_office(self, parent, offices_list)
 
     def close(self):
         self.connection.close()
