@@ -1,11 +1,3 @@
-"""from aiogram import Bot, Dispatcher, executor, types
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
-from aiogram.dispatcher.filters.state import State, StatesGroup
-from aiogram.dispatcher.filters import Text
-from aiogram.dispatcher import FSMContext
-from aiogram.contrib.fsm_storage.memory import MemoryStorage
-import logging
-import imarkups as nav"""
 from isqlighter import SQLighter
 
 db = SQLighter('probase.db')

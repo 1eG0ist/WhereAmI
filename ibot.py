@@ -11,8 +11,6 @@ from protected_token import TOKEN_copy as T
 from functions import SimpleFunctions as SMLF
 from functions import StatesFunctions as STFUNC
 from PIL import Image
-from constants import size_of_photo
-import re
 
 # Уровень логгирования
 logging.basicConfig(level=logging.INFO)
@@ -124,19 +122,31 @@ class DialogWithUser(StatesGroup):
     waiting_for_street_address = State()
     waiting_for_number_address = State()
     waiting_for_office_numbers = State()
+    wait_for_entrance_photo = State()
     adding_photos_from_user = State()
 
 
 @dp.message_handler(Text(equals='🔨📷Добавить здание в бота лично'))
 async def start_dialog_with_user(message: types.Message):
     if not db.check_user_on_photographer_status(message.from_user.id):
-        await message.answer("К сожалению у вас нет статуса 'admin', "
-                             "который необходим для добавления собственных зданий")
+        await message.answer("К сожалению у вас нет статуса 'photographer',  "
+                             "который необходим для добавления собственных зданий, если вы действительно хотите "
+                             "добавить здание, то обратитесь к человеку в телеграмме <ссылка>, указав наименование и "
+                             "город учреждения план которого вы хотите добавить. ДЛЯ ТОГО, ЧТОБЫ ДОБАВИТЬ ЗДАНИЕ в "
+                             "бота вам нужен будет следующий перечень:\n1. Полная информация о здании: "
+                             "наименование, полный адрес, кол-во этажей.\n2.Фотографии здания(фото входа"
+                             "(внутри, сразу войдя в здание), фото всех лестниц на каждом этаже, фото каридоров, фото "
+                             "дверей кабинетов с их номеров в кадре). С КАЖДОЙ ПРЕДЫДУЩЕЙ ФОТОГРАФИИ ДОЛЖНА БЫТЬ ВИДНА "
+                             "СЛЕДУЮЩАЯ")
     else:
-        await message.answer("1. Введите имя вашего здания: \n Если хотите прервать добавление "
+        await message.answer("Здесь должна быть расписана наиподробнейшая инструкция как и куда нужно будет добавлять"
+                             "фотографии\nЕсли хотите прервать добавление "
                              "нового здания просто напишите сообщение 'Отмена' в чат, или комманду "
                              "'/отмена'.\nЕсли вы ошиблись, то нажав на кнопку 'Назад', вы вернетесь "
-                             "на один шаг назад.", reply_markup=nav.AddingBuildMenu)
+                             "на один шаг назад.")
+
+        await message.answer("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX")
+        await message.answer("1. Введите имя вашего здания:", reply_markup=nav.AddingBuildMenu)
         await DialogWithUser.waiting_for_building_name.set()
 
 
@@ -206,16 +216,38 @@ async def take_numbers_of_building(message: types.Message, state: FSMContext):
                     offices_list.append(i)
             else:
                 offices_list.append(number)
+        offices_list = list(map(int, offices_list))
+        await state.update_data(offices_list=offices_list)
+        await message.answer("Теперь пожалуйста введите фотографию входа в ваше здание(внутри, спиной к входной двери)")
+        await DialogWithUser.next()
+
     except Exception:
         await message.answer("Что-то пошло не так, пожалуйста перепроверьте перечень кабинетов еще раз и отправьте "
                              "его заново")
-        await DialogWithUser.previous()
-        await DialogWithUser.next()
 
-    offices_list = list(map(int, offices_list))
-    await state.update_data(offices_list=offices_list)
-    await message.answer("Теперь пожалуйста вводите фотографии")
-    await DialogWithUser.next()
+
+async def adding_entrance_of_building(message: types.Message, state: FSMContext):
+    try:
+        # Скачиваем фотографию в детализации 1, где 0-мыло, 1-норм, 2-хорошо, 3-изначальное разрешение
+        await message.photo[1].download('photo_beta.jpg')
+
+        # Скачиваем уже сжатое до значения константы фото под именем photo.jpg
+        Image.open('photo_beta.jpg').save('photo.jpg')
+
+        # Переводим сжатое фотографию в бинарный формат
+        photo1 = STFUNC.convert_to_binary_data('photo.jpg')
+        building_data = await state.get_data()
+
+        # Добавляем значения и фотографию в бин.виде в бд
+        await db.add_photo_in_graph(photo1, building_data['building_name'], 0, 0, message.caption)
+        await message.answer(f"Принято, теперь пожалуйста введите кол-во лестниц(главных, от которых после будут "
+                             f"разветвляться пути)")
+        if message.text == '✔Завершить':
+            await message.answer('Ваши данные успешно загружены в базу данных')
+            await state.finish()
+
+    except ValueError:
+        await message.answer("Что-то пошло не так, пожалуйста повторите попытку")
 
 
 async def start_adding_photos_from_user(message: types.Message, state: FSMContext):
@@ -232,15 +264,12 @@ async def start_adding_photos_from_user(message: types.Message, state: FSMContex
         else:
             await message.answer('Вам нужно прислать фотографию')
     else:
-        await message.photo[-1].download('test.jpg')
-        user_photo = Image.open('test.jpg').resize(size_of_photo)
-        user_photo.show()
-        photo1 = STFUNC.convert_to_binary_data('test.jpg')
+        await message.photo[1].download('photo.jpg')
+        user_photo = Image.open('photo.jpg')
+        photo1 = STFUNC.convert_to_binary_data('photo.jpg')
         db.add_photo(photo1)
 
         await bot.send_photo(message.from_user.id, photo1)
-        # file_info = await bot.get_file(message.photo[-1].file_id)
-        # await message.photo[-1].download(file_info.file_path.split('photos/')[1])
 
 # -------------------------Откат состояния на шаг назад~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -364,6 +393,7 @@ async def reverse_status_user_with_building(callback_query: types.CallbackQuery,
 
 @dp.message_handler(content_types=ContentType.ANY)
 async def bot_message(message: types.Message):
+    print(message.content_type)
     if message.text == '⬅Главное меню':
         await bot.send_message(message.from_user.id, '*ГЛАВНОЕ МЕНЮ*', reply_markup=nav.mainMenu)
 
@@ -419,6 +449,9 @@ def register_handler_buildings(dp: Dispatcher):
 
     dp.register_message_handler(take_numbers_of_building,
                                 state=DialogWithUser.waiting_for_office_numbers)
+
+    dp.register_message_handler(adding_entrance_of_building, content_types=['sticker', 'photo', 'text'],
+                                state=DialogWithUser.wait_for_entrance_photo)
 
     dp.register_message_handler(start_adding_photos_from_user,
                                 content_types=['sticker', 'photo', 'text'],  # нужно обработать ввод текста

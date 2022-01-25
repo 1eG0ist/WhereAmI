@@ -57,21 +57,24 @@ class SQLighter:
              user_buildings JOIN user ON buildings.id = user_buildings.build_id AND 
              user.user_telegram_id = {user_id} AND user_buildings.user_id = user.id"""):
                 favourites_list.append(one_favour_building)
-            self.connection.commit()
-            return [itemik[0] for itemik in favourites_list]
+
+        self.connection.commit()
+        return [itemik[0] for itemik in favourites_list]
 
     def delete_building_from_user(self, bname, user_id):
-        self.cursor.execute(f"""DELETE FROM user_buildings 
-                WHERE user_id = (SELECT id FROM user WHERE user_telegram_id = {user_id})
-                AND build_id = (SELECT id FROM buildings WHERE build_name = "{bname}") 
-                """)
+        with self.connection:
+            self.cursor.execute(f"""DELETE FROM user_buildings 
+                    WHERE user_id = (SELECT id FROM user WHERE user_telegram_id = {user_id})
+                    AND build_id = (SELECT id FROM buildings WHERE build_name = "{bname}") 
+                    """)
 
         self.connection.commit()
 
     def delete_all_buildings_from_user(self, user_id):
-        self.cursor.execute(f"""DELETE from user_buildings where
-                user_id = (SELECT id FROM user WHERE user_telegram_id = "{user_id}")
-                """)
+        with self.connection:
+            self.cursor.execute(f"""DELETE from user_buildings where
+                    user_id = (SELECT id FROM user WHERE user_telegram_id = "{user_id}")
+                    """)
 
         self.connection.commit()
 
@@ -86,12 +89,13 @@ class SQLighter:
         return list(names_of_b)
 
     def add_another_building_to_user(self, name, user_tg_id):
-        self.cursor.execute("""INSERT INTO 'user_buildings' 
-        (user_id, build_id) VALUES (?, ?)""",
-                (list(self.cursor.execute(f'SELECT id FROM user WHERE '
-                                          f'user_telegram_id = {user_tg_id}'))[0][0],
-                    list(self.cursor.execute(f'SELECT id FROM buildings '
-                                             f'WHERE build_name = "{name}"'))[0][0]))
+        with self.connection:
+            self.cursor.execute("""INSERT INTO 'user_buildings' 
+            (user_id, build_id) VALUES (?, ?)""",
+                    (list(self.cursor.execute(f'SELECT id FROM user WHERE '
+                                              f'user_telegram_id = {user_tg_id}'))[0][0],
+                        list(self.cursor.execute(f'SELECT id FROM buildings '
+                                                 f'WHERE build_name = "{name}"'))[0][0]))
 
         self.connection.commit()
 
@@ -125,6 +129,25 @@ class SQLighter:
             self.cursor.execute(f"INSERT INTO 'phototest' (photo) VALUES (?)", (im_id, ))
 
         self.connection.commit()
+
+    def add_photo_in_graph(self, photo, name, number_of_control_dot, step_on_control_dot, text):
+        b_id = list(self.cursor.execute(f"SELECT id FROM buildings WHERE buildings.build_name = '{name}'"))
+        graph_id = max(set(self.cursor.execute(f"SELECT id FROM graph")))[0]+1
+        with self.connection:
+            self.cursor.execute(f"INSERT INTO 'graph' (id, building_id, photo) VALUES (?, ?, ?)", (
+                graph_id, b_id[0][0], photo
+            ))
+
+        self.connection.commit()
+
+        with self.connection:
+            self.cursor.execute(f"INSERT INTO 'info_about_photo' (graph_id, number_of_control_dot, "
+                                f"number_of_step_on_ones_control_dot, description) VALUES (?, ?, ?, ?)", (
+                graph_id, number_of_control_dot, step_on_control_dot, text
+            ))
+
+        self.connection.commit()
+        return graph_id
 
     def close(self):
         self.connection.close()

@@ -47,4 +47,3 @@ btnListFollow = KeyboardButton('📄Список избранного')
 btnAddExistingBuilding = KeyboardButton('🔍Добавить в избранное')
 btnMoney = KeyboardButton('➖Удаление из избранного')
 FollowMenu = ReplyKeyboardMarkup().add(btnListFollow, btnAddExistingBuilding, btnMoney, btnMain)
-
