@@ -74,6 +74,7 @@ async def take_new_admin_tg_id(message: types.Message, state: FSMContext):
             else:
                 db.add_new_admin(message.text)
                 await message.answer("Пользователю с введенным id успешно выдана роль 'admin'")
+                await bot.send_message(message.text, "Вам выдана роль 'admin'")
         else:
             await message.answer("Пользователь с введенным id уже обладает ролью 'admin'")
         await state.finish()
@@ -105,6 +106,7 @@ async def take_new_photographer_tg_id(message: types.Message, state: FSMContext)
             else:
                 db.add_new_photographer(message.text)
                 await message.answer(f"Пользователю с указанным id успешно выдана роль 'photographer'")
+                await bot.send_message(message.text, "Вам выдана роль 'photographer'")
         else:
             await message.answer(f"Пользователь с указанным id уже обладает ролью 'photographer'")
         await state.finish()
@@ -395,7 +397,6 @@ async def delete_from_fav_building(message: types.Message):
 
 
 async def reverse_status_user_with_building(callback_query: types.CallbackQuery, state: FSMContext):
-    print(callback_query['data'].split('_')[1])
     db.delete_building_from_user(callback_query['data'].split('_')[1], int(callback_query.from_user.id))
     await bot.send_message(callback_query.from_user.id, f"Здание {callback_query['data'].split('_')[1]}"
                                                         f" было удалено из списка избранных")
@@ -408,7 +409,6 @@ async def reverse_status_user_with_building(callback_query: types.CallbackQuery,
 
 @dp.message_handler(content_types=ContentType.ANY)
 async def bot_message(message: types.Message):
-    print(message.content_type)
     if message.text == '⬅Главное меню':
         await bot.send_message(message.from_user.id, '*ГЛАВНОЕ МЕНЮ*', reply_markup=nav.mainMenu)
 
