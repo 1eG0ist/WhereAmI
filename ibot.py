@@ -27,8 +27,10 @@ db = SQLighter('probase.db')
 @dp.message_handler(commands=['start', 'subscribe'])
 async def command_start(message: types.Message):
     await bot.send_message(message.from_user.id,
-                           'Здарова {0.first_name}'.format(message.from_user),
+                           'Приветствую вас, {0.first_name}'.format(message.from_user),
                            reply_markup=nav.mainMenu)
+    if len(db.get_user_id(message.from_user.id)) == 0:
+        db.add_user(message.from_user.id)
 
 
 @dp.message_handler(commands=['help'])
@@ -126,6 +128,7 @@ class DialogWithUser(StatesGroup):
     waiting_for_office_numbers = State()
     wait_for_entrance_photo = State()
     adding_photos_from_user = State()
+    wait_new_last_number = State()
 
 
 @dp.message_handler(Text(equals='🔨📷Добавить здание в бота лично'))
@@ -196,8 +199,8 @@ async def start_waiting_for_number_address(message: types.Message, state: FSMCon
                          f"{user_new_building_data['building_number_address']}",
                          reply_markup=nav.AddingPhotosMenu)
     await message.answer(f"Введите номера всех кабинетов через запятую, если номера кабинетов идут подряд, то вы "
-                         f"можете указать их так: 557-560.\nОбратите внимание, меньшее число слева-большее справа. "
-                         f"Рекомендуем в целом добавлять кабинеты от меньшего к большему")
+                         f"можете указать их так: 557-560 или 345-360,401-420.\nОбратите внимание, меньшее число "
+                         f"слева-большее справа. Рекомендуем в целом добавлять кабинеты от меньшего к большему")
     SMLF.adding_build(user_new_building_data, int(message.from_user.id))
     await state.update_data(photos=[[1]])
     await DialogWithUser.next()
@@ -221,11 +224,7 @@ async def take_numbers_of_building(message: types.Message, state: FSMContext):
         offices_list = list(map(int, offices_list))
         await state.update_data(offices_list=offices_list)
         await message.answer("Теперь пожалуйста введите фотографию входа в ваше здание(внутри, спиной к входной "
-                             "двери) и подпишите как <ВХОД>........ ВАЖНО, когда ветвь ваших фотографий закончится и "
-                             "вы будете переходить к другой ВАМ НУЖНО УКАЗАТЬ В ПРИКРЕПЛЕННОМ К ФОТО ТЕКСТЕ "
-                             "!!!!ИСКЛЮЧИТЕЛЬНО!!!! ЕГО НОМЕР И НИЧЕГО БОЛЬШЕ!!!!, когда вы добавите все кабинеты "
-                             "для того чтобы выйти вам нужно будет ввести команду stop, т.е. вам нужно будет ввести "
-                             "/stop")
+                             "двери) и подпишите как <ВХОД>, когда вы добавите все кабинеты введите /stop")
         await DialogWithUser.next()
 
     except Exception:
@@ -244,44 +243,71 @@ async def adding_entrance_of_building(message: types.Message, state: FSMContext)
         # Переводим сжатое изображение в бинарный формат
         photo1 = STFUNC.convert_to_binary_data('photo.jpg')
 
-        # Добавляем значения и фотографию в бин.виде в бд
+        # Добавляем значения и фотографию в бинарном виде в бд
         building_data = await state.get_data()
         graph_id = db.add_photo_in_graph(photo1, building_data['building_name'], message.caption, -1)
-        await message.answer(f"Хорошо, теперь корень вашего ветвления из фотографий в базе данных "
-                             f"имеет id номер |||| {graph_id} ||||, теперь, когда захотите пустить ветвь фотографий "
-                             f"начиная от этой фотографии, вам нужно будет указать этот id, С ЭТОГО МОМЕНТА ПОДПИСЬ "
-                             f"К ВАШИМ ФОТОГРАФИЯМ ДОЛЖНА ИМЕТЬ ТАКОЙ ВИД(не указывайте кавычки) - \n<описание>+++<id"
-                             f" фотографии, которая является родителем этой фотографии>")
+        await state.update_data(last_number=graph_id)
+        await message.answer(f"Хорошо, теперь основание вашего ветвления имеет номер {graph_id}, когда захотите "
+                             f"пустить ветвь фотографий начиная от этой фотографии, вам нужно будет указать этот номер")
+
+        await message.answer(f"Теперь вам нужно подписывать каждую фотографию, например - "
+                             f"<пройдите вперед по коридору до упора> или <войдите через дверь>")
+
+        await message.answer(f"По умолчанию ваша следующая фотография будет привязываться к предшествующей, если вам "
+                             f"нужно сделать новую ветку - нажмите кнопку <новая ветка> и введите номер фотографии, с "
+                             f"которой будет начинаться новая ветка")
+
+        await message.answer(f"ВАЖНО: когда ветвь заканчивается и на фото кабинет, к которому ведет путь в подписи "
+                             f"к нему должен быть только его номер")
+
+        await message.answer(f"Пожалуйста, для полного понимая процесса прочтите все сообщения")
+
+        await message.answer(f"Вводите фотографии: ")
         await DialogWithUser.next()
 
     except Exception:
         await message.answer("Что-то пошло не так, пожалуйста повторите попытку")
 
-# Рекурсивная функция, которая будет проходиться по дереву фотографий должна будет делать это до тех пор пока
-# не встретит значение -1 в столбце parent таблицы graph, создав массив я буду передавать его в рекурсивный вызов
-# функции и накапливать фотографии от кабинета до входа, а после разверну и отправлю пользователю
-
 
 async def start_adding_photos_from_user(message: types.Message, state: FSMContext):
+    if message.content_type == 'text':
+        if message.text == "Новая ветка":
+            await message.answer("Пожалуйста введите номер фотографии, к которой будет привязана следующая фотография")
+            await DialogWithUser.next()
+    else:
+        try:
+            # Скачиваем фотографию в детализации 1, где 0-мыло, 1-норм, 2-хорошо, 3-изначальное разрешение
+            await message.photo[1].download('photo_beta.jpg')
+
+            # Скачиваем уже сжатое до значения 1 фото под именем photo.jpg
+            Image.open('photo_beta.jpg').save('photo.jpg')
+
+            # Переводим сжатое изображение в бинарный формат
+            photo1 = STFUNC.convert_to_binary_data('photo.jpg')
+
+            building_data = await state.get_data()
+
+            graph_id = db.add_photo_in_graph(photo1, building_data['building_name'],
+                                             message.caption, building_data['last_number'])
+
+            await state.update_data(last_number=graph_id)
+            await message.answer(f"номер этой фотографии - {graph_id}")
+
+        except Exception:
+            await message.answer("Что-то пошло не так, пожалуйста отправьте фотографию заново, возможно вы указали "
+                                 "номер фотографии которого не существует, так что убедитесь, "
+                                 "что бот отправлял в ответ на ваше фото номер, которой вы указали")
+
+
+async def start_waiting_for_last_number(message: types.Message, state: FSMContext):
     try:
-        # Скачиваем фотографию в детализации 1, где 0-мыло, 1-норм, 2-хорошо, 3-изначальное разрешение
-        await message.photo[1].download('photo_beta.jpg')
-
-        # Скачиваем уже сжатое до значения 1 фото под именем photo.jpg
-        Image.open('photo_beta.jpg').save('photo.jpg')
-
-        # Переводим сжатое изображение в бинарный формат
-        photo1 = STFUNC.convert_to_binary_data('photo.jpg')
-
-        text = message.caption.split("+++")
-        building_data = await state.get_data()
-        graph_id = db.add_photo_in_graph(photo1, building_data['building_name'], text[0], text[1])
-        await message.answer(f"id этой фотографии - {graph_id}")
-
+        await state.update_data(last_number=message.text)
+        await message.answer("Теперь следующая фотография будет привязана к этому номеру")
+        await message.answer("Введите фотографию: ")
+        await DialogWithUser.previous()
     except Exception:
-        await message.answer("Что-то пошло не так, пожалуйста отправьте фотографию заново, или разочаруйтесь в жизни, "
-                             "кстати возможно вы указали id фотографии которого не существует, так что убедитесь, "
-                             "что бот отправлял в ответ на ваше фото id, которое вы указали")
+        await message.answer("Что-то пошло не так, повторите попытку")
+
 
 # -------------------------Откат состояния на шаг назад~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -300,6 +326,7 @@ async def cmd_previous(message: types.Message, state: FSMContext):
 
 @dp.message_handler(commands=['stop'])
 @dp.message_handler(Text(equals='Отмена'))
+@dp.message_handler(Text(equals='✔Завершить'))
 async def cmd_cancel(message: types.Message, state: FSMContext):
     await state.finish()
     await message.answer("Добавление нового здания прекращено", reply_markup=nav.mainMenu)
@@ -371,7 +398,7 @@ async def take_number_of_building(message: types.Message, state: FSMContext):
     data = await state.get_data()
     graph_id = db.search_for_needed_id(data['building'], message.text)
     offices_list = db.search_for_needed_office(graph_id, [])
-    for i in range(len(offices_list)-1, -1, -1):
+    for i in range(len(offices_list)):
         await bot.send_photo(message.from_user.id, offices_list[i][0], offices_list[i][1])
     await state.finish()
 
@@ -471,6 +498,8 @@ def register_handler_buildings(dp: Dispatcher):
     dp.register_message_handler(start_adding_photos_from_user,
                                 content_types=['sticker', 'photo', 'text'],  # нужно обработать ввод текста
                                 state=DialogWithUser.adding_photos_from_user)
+
+    dp.register_message_handler(start_waiting_for_last_number, state=DialogWithUser.wait_new_last_number)
 
 
 def register_existing_handler_buildings(dp: Dispatcher):

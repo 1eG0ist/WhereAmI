@@ -39,8 +39,8 @@ AddingBuildMenu = ReplyKeyboardMarkup(resize_keyboard=True).add(btnCancel, btnPr
 
 # ~~~Adding_photos_menu~~~
 btnFinish = KeyboardButton('✔Завершить')
-btnNextStage = KeyboardButton('Следующее')
-AddingPhotosMenu = ReplyKeyboardMarkup(resize_keyboard=True).add(btnCancel, btnFinish, btnNextStage)
+btnNewBranch = KeyboardButton('Новая ветка')
+AddingPhotosMenu = ReplyKeyboardMarkup(resize_keyboard=True).add(btnCancel, btnFinish, btnNewBranch)
 
 # ~~~ Following_menu ~~~
 btnListFollow = KeyboardButton('📄Список избранного')
