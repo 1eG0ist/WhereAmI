@@ -236,7 +236,6 @@ async def adding_entrance_of_building(message: types.Message, state: FSMContext)
     try:
         # Скачиваем фотографию в детализации 1, где 0-мыло, 1-норм, 2-хорошо, 3-изначальное разрешение
         await message.photo[1].download('photo_beta.jpg')
-
         # Скачиваем уже сжатое до значения 1 фото под именем photo.jpg
         Image.open('photo_beta.jpg').save('photo.jpg')
 
@@ -329,7 +328,7 @@ async def cmd_previous(message: types.Message, state: FSMContext):
 @dp.message_handler(Text(equals='✔Завершить'))
 async def cmd_cancel(message: types.Message, state: FSMContext):
     await state.finish()
-    await message.answer("Добавление нового здания прекращено", reply_markup=nav.mainMenu)
+    await message.answer("Процесс завершен", reply_markup=nav.mainMenu)
 
 # ~~~~~~~~~~~~~~~~~~~Добавление существующего в бд здания к пользователю~~~~~~~~~~~~~~~~~~~
 
@@ -370,6 +369,7 @@ async def add_name_of_another_building(message: types.Message, state: FSMContext
 class WayToOffice(StatesGroup):
     follow_list_wait_for_building_name = State()
     wait_for_office_number = State()
+    send_photo = State()
 
 
 @dp.message_handler(Text(equals='📄Список избранного'))
@@ -390,17 +390,46 @@ async def reaction_on_favourites_buildings(callback: types.CallbackQuery, state:
     await callback.answer(callback['data'])
     await state.update_data(building=callback['data'])
     await bot.send_message(int(callback.from_user.id), "Введите номер кабинета")
+    await state.update_data(send_number=1)
     await WayToOffice.next()
 
 
 async def take_number_of_building(message: types.Message, state: FSMContext):
-    await bot.send_message(int(message.from_user.id), "Тут вот путь тебе в будущем отправят до кабинета")
-    data = await state.get_data()
-    graph_id = db.search_for_needed_id(data['building'], message.text)
-    offices_list = db.search_for_needed_office(graph_id, [])
-    for i in range(len(offices_list)):
-        await bot.send_photo(message.from_user.id, offices_list[i][0], offices_list[i][1])
-    await state.finish()
+    try:
+        data = await state.get_data()
+        print(message.text)
+        graph_id = db.search_for_needed_id(data['building'], message.text)
+        await state.update_data(offices_list=db.search_for_needed_office(graph_id, [])[::-1])
+        await message.answer("Для того, чтобы получить следующее фото, нажмите на кнопку 'Следующее фото', для отмены "
+                             "процесса нажмите кнопку 'Отмена'", reply_markup=nav.PhotosSendMenu)
+        data = await state.get_data()
+        await bot.send_photo(int(message.from_user.id), data['offices_list'][0][0], data['offices_list'][0][1])
+        await WayToOffice.next()
+
+    except Exception:
+        await message.answer(f"Похоже такого кабинета в здании нет, поиск прекращен", reply_markup=nav.mainMenu)
+        await state.finish()
+
+
+async def send_photo_to_user(message: types.Message, state: FSMContext):
+    try:
+        if message.text == "Следующее фото":
+            data = await state.get_data()
+            await bot.send_photo(int(message.from_user.id),
+                                   data['offices_list'][data['send_number']][0],
+                                   data['offices_list'][data['send_number']][1])
+
+            if data['send_number'] == len(data['offices_list'])-1:
+                await message.answer("Вы у цели", reply_markup=nav.mainMenu)
+                await state.finish()
+            else:
+                await state.update_data(send_number=int(data['send_number'])+1)
+
+        else:
+            await message.answer("Сообщение не распознано\nДля того, чтобы получить следующее фото, нажмите на кнопку "
+                                 "'Следующее фото', для отмены процесса нажмите кнопку 'Отмена'\nПожалуйста повторите")
+    except Exception:
+        await message.answer("Похоже что-то пошло не так, отправка пути прекращена", reply_markup=nav.mainMenu)
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~Функция удаления здания из избранного~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -464,6 +493,7 @@ async def bot_message(message: types.Message):
 
     elif message.text == '⚠❗⛔УДАЛИТЬ ВСЕ ЗДАНИЯ ИЗ ИЗБРАННОГО БЕЗВОЗВРАТНО':
         db.delete_all_buildings_from_user(int(message.from_user.id))
+        await message.answer("Здания успешно удалены")
 
     else:
         await message.reply('Мне немного не понятно, что именно вы имели ввиду, попробуйте заново')
@@ -473,6 +503,7 @@ def register_handler_buildings(dp: Dispatcher):
     dp.register_message_handler(start_dialog_with_user, commands='building', state="*")
     dp.register_message_handler(cmd_cancel, state="*", commands="stop")
     dp.register_message_handler(cmd_cancel, Text(equals="Отмена"), state="*")
+    dp.register_message_handler(cmd_cancel, Text(equals='✔Завершить'), state='*')
     dp.register_message_handler(cmd_previous, Text(equals="назад", ignore_case=True), state="*")
     dp.register_message_handler(start_waiting_for_building_name,
                                 state=DialogWithUser.waiting_for_building_name)
@@ -527,10 +558,12 @@ def register_del_building(dp: Dispatcher):
 
 def register_way_to_office(dp: Dispatcher):
     dp.register_message_handler(favourites_buildings, Text(equals="📄Список избранного"), state='*')
+    dp.register_message_handler(cmd_cancel, Text(equals="Отмена"), state="*")
     dp.register_callback_query_handler(reaction_on_favourites_buildings,
                                        state=WayToOffice.follow_list_wait_for_building_name)
     dp.register_message_handler(take_number_of_building,
                                 state=WayToOffice.wait_for_office_number)
+    dp.register_message_handler(send_photo_to_user, state=WayToOffice.send_photo)
 
 
 register_way_to_office(dp)

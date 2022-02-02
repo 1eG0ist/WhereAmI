@@ -1,7 +1,7 @@
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 
 btnMain = KeyboardButton('⬅Главное меню')
-
+btnCancel = KeyboardButton('Отмена')
 
 # ~~~main-menu~~~
 btnRandom = KeyboardButton('💕Избранное')
@@ -32,7 +32,6 @@ AddingChoiceMenu = ReplyKeyboardMarkup(resize_keyboard=True).add(btnAddNewBuildi
                                                                  btnMain)
 
 # ~~~Adding_build_menu~~~
-btnCancel = KeyboardButton('Отмена')
 btnPrevious = KeyboardButton('Назад')
 AddingBuildMenu = ReplyKeyboardMarkup(resize_keyboard=True).add(btnCancel, btnPrevious)
 
@@ -46,4 +45,8 @@ AddingPhotosMenu = ReplyKeyboardMarkup(resize_keyboard=True).add(btnCancel, btnF
 btnListFollow = KeyboardButton('📄Список избранного')
 btnAddExistingBuilding = KeyboardButton('🔍Добавить в избранное')
 btnMoney = KeyboardButton('➖Удаление из избранного')
-FollowMenu = ReplyKeyboardMarkup().add(btnListFollow, btnAddExistingBuilding, btnMoney, btnMain)
+FollowMenu = ReplyKeyboardMarkup(resize_keyboard=True).add(btnListFollow, btnAddExistingBuilding, btnMoney, btnMain)
+
+# ~~~ Photos_menu ~~~
+btnNextPhoto = KeyboardButton('Следующее фото')
+PhotosSendMenu = ReplyKeyboardMarkup(resize_keyboard=True).add(btnNextPhoto, btnCancel)
