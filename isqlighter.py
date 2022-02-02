@@ -143,7 +143,7 @@ class SQLighter:
 
     def search_for_needed_id(self, name: str, office_number: str) -> int:
         parent = list(self.cursor.execute(f"SELECT id FROM graph WHERE building_id = (SELECT id FROM buildings WHERE "
-                                          f"build_name = '{name}') AND description = {str(office_number)}"))
+                                          f"build_name = '{name}') AND description = '{str(office_number)}'"))
         return parent[0][0]
 
     def search_for_needed_office(self, graph_id: int, offices_list: list) -> list:
