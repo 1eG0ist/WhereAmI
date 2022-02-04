@@ -223,6 +223,7 @@ async def take_numbers_of_building(message: types.Message, state: FSMContext):
                 offices_list.append(number)
         offices_list = list(map(int, offices_list))
         await state.update_data(offices_list=offices_list)
+
         await message.answer("Теперь пожалуйста введите фотографию входа в ваше здание(внутри, спиной к входной "
                              "двери) и подпишите как <ВХОД>, когда вы добавите все кабинеты введите /stop")
         await DialogWithUser.next()
@@ -244,9 +245,14 @@ async def adding_entrance_of_building(message: types.Message, state: FSMContext)
 
         # Добавляем значения и фотографию в бинарном виде в бд
         building_data = await state.get_data()
+
         graph_id = db.add_photo_in_graph(photo1, building_data['building_name'], message.caption, -1)
         await state.update_data(last_number=graph_id)
-        await message.answer(f"Хорошо, теперь основание вашего ветвления имеет номер {graph_id}, когда захотите "
+
+        await state.update_data(redefinition_numbers={'1': graph_id})
+
+        await state.update_data()
+        await message.answer(f"Хорошо, теперь основание вашего ветвления имеет номер 1, когда захотите "
                              f"пустить ветвь фотографий начиная от этой фотографии, вам нужно будет указать этот номер")
 
         await message.answer(f"Теперь вам нужно подписывать каждую фотографию, например - "
@@ -289,8 +295,13 @@ async def start_adding_photos_from_user(message: types.Message, state: FSMContex
             graph_id = db.add_photo_in_graph(photo1, building_data['building_name'],
                                              message.caption, building_data['last_number'])
 
+            data = await state.get_data()
+            updated_dict = data["redefinition_numbers"]
+            max_dict=max(set(map(int, data['redefinition_numbers'].keys())))
+            updated_dict[max_dict+1] = graph_id
+            await state.update_data(redefinition_numbers=updated_dict)
             await state.update_data(last_number=graph_id)
-            await message.answer(f"номер этой фотографии - {graph_id}")
+            await message.answer(f"номер этой фотографии - {max_dict+1}")
 
         except Exception:
             await message.answer("Что-то пошло не так, пожалуйста отправьте фотографию заново, возможно вы указали "
@@ -300,7 +311,9 @@ async def start_adding_photos_from_user(message: types.Message, state: FSMContex
 
 async def start_waiting_for_last_number(message: types.Message, state: FSMContext):
     try:
-        await state.update_data(last_number=message.text)
+        data = await state.get_data()
+        data = data["redefinition_numbers"]
+        await state.update_data(last_number=data[message.text])
         await message.answer("Теперь следующая фотография будет привязана к этому номеру")
         await message.answer("Введите фотографию: ")
         await DialogWithUser.previous()
@@ -397,7 +410,6 @@ async def reaction_on_favourites_buildings(callback: types.CallbackQuery, state:
 async def take_number_of_building(message: types.Message, state: FSMContext):
     try:
         data = await state.get_data()
-        print(message.text)
         graph_id = db.search_for_needed_id(data['building'], message.text)
         await state.update_data(offices_list=db.search_for_needed_office(graph_id, [])[::-1])
         await message.answer("Для того, чтобы получить следующее фото, нажмите на кнопку 'Следующее фото', для отмены "
@@ -406,7 +418,7 @@ async def take_number_of_building(message: types.Message, state: FSMContext):
         await bot.send_photo(int(message.from_user.id), data['offices_list'][0][0], data['offices_list'][0][1])
         await WayToOffice.next()
 
-    except Exception:
+    except ValueError:
         await message.answer(f"Похоже такого кабинета в здании нет, поиск прекращен", reply_markup=nav.mainMenu)
         await state.finish()
 
@@ -428,7 +440,7 @@ async def send_photo_to_user(message: types.Message, state: FSMContext):
         else:
             await message.answer("Сообщение не распознано\nДля того, чтобы получить следующее фото, нажмите на кнопку "
                                  "'Следующее фото', для отмены процесса нажмите кнопку 'Отмена'\nПожалуйста повторите")
-    except Exception:
+    except ValueError:
         await message.answer("Похоже что-то пошло не так, отправка пути прекращена", reply_markup=nav.mainMenu)
 
 
@@ -488,7 +500,7 @@ async def bot_message(message: types.Message):
 
     elif message.text == '➕Добавить здание':
         await bot.send_message(message.from_user.id,
-                               'Имейте ввиде, эта функция доступна только людям, с определенной ролью',
+                               'Имейте ввиду, эта функция доступна только людям, с определенной ролью',
                                reply_markup=nav.AddingChoiceMenu)
 
     elif message.text == '⚠❗⛔УДАЛИТЬ ВСЕ ЗДАНИЯ ИЗ ИЗБРАННОГО БЕЗВОЗВРАТНО':
