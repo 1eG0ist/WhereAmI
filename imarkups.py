@@ -4,9 +4,10 @@ btnMain = KeyboardButton('⬅Главное меню')
 btnCancel = KeyboardButton('Отмена')
 
 # ~~~main-menu~~~
-btnRandom = KeyboardButton('💕Избранное')
+btnListFollow = KeyboardButton('📄Список избранного')
+btnRandom = KeyboardButton('💕Редактирование избранного')
 btnOther = KeyboardButton('Другое➱')
-mainMenu = ReplyKeyboardMarkup(resize_keyboard=True).add(btnRandom, btnOther)
+mainMenu = ReplyKeyboardMarkup(resize_keyboard=True).add(btnRandom, btnListFollow, btnOther)
 
 
 # ~~~SettingsMenu~~~
@@ -42,10 +43,10 @@ btnNewBranch = KeyboardButton('Новая ветка')
 AddingPhotosMenu = ReplyKeyboardMarkup(resize_keyboard=True).add(btnCancel, btnFinish, btnNewBranch)
 
 # ~~~ Following_menu ~~~
-btnListFollow = KeyboardButton('📄Список избранного')
+
 btnAddExistingBuilding = KeyboardButton('🔍Добавить в избранное')
 btnMoney = KeyboardButton('➖Удаление из избранного')
-FollowMenu = ReplyKeyboardMarkup(resize_keyboard=True).add(btnListFollow, btnAddExistingBuilding, btnMoney, btnMain)
+FollowMenu = ReplyKeyboardMarkup(resize_keyboard=True).add(btnAddExistingBuilding, btnMoney, btnMain)
 
 # ~~~ Photos_menu ~~~
 btnNextPhoto = KeyboardButton('Следующее фото')
