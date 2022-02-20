@@ -1,18 +1,18 @@
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 
-btnMain = KeyboardButton('⬅Главное меню')
+btnMain = KeyboardButton('🏠Главное')
 btnCancel = KeyboardButton('Отмена')
 
 # ~~~main-menu~~~
-btnListFollow = KeyboardButton('📄Список избранного')
-btnRandom = KeyboardButton('💕Редактирование избранного')
+btnListFollow = KeyboardButton('💕📄')
+btnRandom = KeyboardButton('💕⚙')
 btnOther = KeyboardButton('Другое➱')
 mainMenu = ReplyKeyboardMarkup(resize_keyboard=True).add(btnRandom, btnListFollow, btnOther)
 
 
 # ~~~SettingsMenu~~~
-btnDelAllBuilds = KeyboardButton('⛔Удалить ВСЕ здания')
-btnDelOneBuild = KeyboardButton('‼Удалить ОДНО здание')
+btnDelAllBuilds = KeyboardButton('⛔Удалить ВСЕ')
+btnDelOneBuild = KeyboardButton('‼Удалить ОДНО')
 
 SettingsMenu = ReplyKeyboardMarkup(resize_keyboard=True).add(
     btnDelAllBuilds, btnDelOneBuild, btnMain)
@@ -24,7 +24,6 @@ DelOneBuildMenu = ReplyKeyboardMarkup(resize_keyboard=True).add(btnMain)
 
 # ~~~OtherMenu~~~
 btnInfo = KeyboardButton('➕Добавить здание')
-
 otherMenu = ReplyKeyboardMarkup(resize_keyboard=True).add(btnInfo, btnMain)
 
 # ~~~ChoiceAddMenu~~~
@@ -44,8 +43,8 @@ AddingPhotosMenu = ReplyKeyboardMarkup(resize_keyboard=True).add(btnCancel, btnF
 
 # ~~~ Following_menu ~~~
 
-btnAddExistingBuilding = KeyboardButton('🔍Добавить в избранное')
-btnMoney = KeyboardButton('➖Удаление из избранного')
+btnAddExistingBuilding = KeyboardButton('🔍Добавить')
+btnMoney = KeyboardButton('➖Удалить')
 FollowMenu = ReplyKeyboardMarkup(resize_keyboard=True).add(btnAddExistingBuilding, btnMoney, btnMain)
 
 # ~~~ Photos_menu ~~~

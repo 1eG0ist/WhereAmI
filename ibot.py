@@ -27,11 +27,37 @@ db = SQLighter('probase.db')
 @dp.message_handler(commands=['start', 'subscribe'])
 async def command_start(message: types.Message):
     await bot.send_message(message.from_user.id,
-                           "Приветствую вас, {0.first_name}, я бот для нахождения кабинетов, чтобы воспользоваться "
-                           "мной - нужно сначала добавить интересующее вас здание в избранное во вкладке "
-                           "'💕Редактирование избранного', а после вы сможете получить путь от входа до самого кабинета."
-                           "".format(message.from_user),
+                           "Приветствую вас, {0.first_name}, я бот для нахождения кабинетов в зданиях. Ниже "
+                           "представлена инструкция по использованию "
+                           .format(message.from_user),
                            reply_markup=nav.mainMenu)
+    await bot.send_message(message.from_user.id, "ЦЕЛЬ: Бот существует для того, чтобы помочь вам находить кабинеты "
+                                                 "без лишних временных затрат")
+
+    await bot.send_message(message.from_user.id, "Пояснение, что значат названия кнопок в различных меню(меню-набор "
+                                                 "кнопок внизу экрана)\n1. 💕📄 - Список вашего избранного\n2. 💕⚙ - "
+                                                 "Редактирование вашего избранного, здесь вы можете добавлять здания "
+                                                 "в список избранного, а так же удалять здания из него\n3. 🏠Главное - "
+                                                 "Кнопка возвращающая вас в основное меню")
+
+    await bot.send_message(message.from_user.id, "Для того, чтобы начать испольховать бота в нужном для вас здании, "
+                                                 "вам нужно сперва добавить его в избранное. Как это сделать?:\n"
+                                                 "1. Вам нужно нажать на кнопку снизу экрана под названием '💕⚙'\n"
+                                                 "2. Нажмите на кнопку '🔍Добавить'\n"
+                                                 "3. Введите название здания которое вы хотите добавить"
+                                                 "(сначала попробуйте ввести абривиатуру, если здание не нашлось, "
+                                                 "введите название вашего здания полностью)\n Обратите внимание, "
+                                                 "здания будут загружаться в бота постепенно и возможно на данном этапе"
+                                                 " здания в нем еще нет")
+
+    await bot.send_message(message.from_user.id, f"Данный бот, расчитан на то, что люди будут сами постепенно "
+                                                 f"добавлять свои здания в бота и тем самым будут помогать остальным. "
+                                                 f"Если вашего здания нет в боте и вы хотите лично добавить его, "
+                                                 "то пожалуйста напишите сюда - {}, Сразу указывайте город и название "
+                                                 "здания, после этого вам будет выдана соответствующая роль.")
+
+    await bot.send_message(message.from_user.id, "Приятного использования!")
+
     if len(db.get_user_id(message.from_user.id)) == 0:
         db.add_user(message.from_user.id)
 
@@ -343,7 +369,7 @@ class Addexistingbuilding(StatesGroup):
     ex_wait_building_name = State()
 
 
-@dp.message_handler(Text(equals='🔍Добавить в избранное'))
+@dp.message_handler(Text(equals='🔍Добавить'))
 async def add_another_building(message: types.Message):
     await bot.send_message(message.from_user.id,
                            'Введите имя здания которое вы хотите найти',
@@ -378,7 +404,7 @@ class WayToOffice(StatesGroup):
     send_photo = State()
 
 
-@dp.message_handler(Text(equals='📄Список избранного'))
+@dp.message_handler(Text(equals='💕📄'))
 async def favourites_buildings(message: types.Message):
     url_keyboard = InlineKeyboardMarkup(row_width=2)
     favour_list = db.show_favourites_user_buildings(int(message.from_user.id))
@@ -444,7 +470,7 @@ class DellOneBuild(StatesGroup):
     hold_for_building_name = State()
 
 
-@dp.message_handler(Text(equals='‼Удалить ОДНО здание'))
+@dp.message_handler(Text(equals='‼Удалить ОДНО'))
 async def delete_from_fav_building(message: types.Message):
     url_keyboard = InlineKeyboardMarkup(row_width=2)
     favour_list = db.show_favourites_user_buildings(int(message.from_user.id))
@@ -470,23 +496,23 @@ async def reverse_status_user_with_building(callback_query: types.CallbackQuery,
 
 @dp.message_handler(content_types=ContentType.ANY)
 async def bot_message(message: types.Message):
-    if message.text == '⬅Главное меню':
+    if message.text == '🏠Главное':
         await bot.send_message(message.from_user.id, '*ГЛАВНОЕ МЕНЮ*', reply_markup=nav.mainMenu)
 
     elif message.content_type == 'sticker':
         await message.answer('Ты прислал мне стикер')
 
-    elif message.text == '💕Редактирование избранного':
+    elif message.text == '💕⚙':
         await bot.send_message(message.from_user.id, '*ИЗБРАННОЕ*', reply_markup=nav.FollowMenu)
 
     elif message.text == 'Другое➱':
         await bot.send_message(message.from_user.id, '*ДРУГОЕ*',
                                reply_markup=nav.otherMenu)
 
-    elif message.text == '➖Удаление из избранного':
+    elif message.text == '➖Удалить':
         await bot.send_message(message.from_user.id, '*Меню удаления*', reply_markup=nav.SettingsMenu)
 
-    elif message.text == '⛔Удалить ВСЕ здания':
+    elif message.text == '⛔Удалить ВСЕ':
         await bot.send_message(message.from_user.id,
                                'Если вы действительно хотите удалить все здания нажмите на кнопку удаления еще раз',
                                reply_markup=nav.DelAllBuildsMenu)
