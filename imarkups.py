@@ -3,6 +3,10 @@ from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 btnMain = KeyboardButton('🏠Главное')
 btnCancel = KeyboardButton('Отмена')
 
+# ~~~FavouriteListMenu~~~
+FavouriteListMenu = ReplyKeyboardMarkup(resize_keyboard=True).add(btnCancel, btnMain)
+
+
 # ~~~main-menu~~~
 btnListFollow = KeyboardButton('💕📄')
 btnRandom = KeyboardButton('💕⚙')
