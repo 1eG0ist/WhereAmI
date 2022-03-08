@@ -4,13 +4,13 @@ btnMain = KeyboardButton('🏠Главное')
 btnCancel = KeyboardButton('Отмена')
 
 # ~~~FavouriteListMenu~~~
-FavouriteListMenu = ReplyKeyboardMarkup(resize_keyboard=True).add(btnCancel, btnMain)
+FavouriteListMenu = ReplyKeyboardMarkup(resize_keyboard=True).add(btnCancel)
 
 
 # ~~~main-menu~~~
-btnListFollow = KeyboardButton('💕📄')
-btnRandom = KeyboardButton('💕⚙')
-btnOther = KeyboardButton('Другое➱')
+btnListFollow = KeyboardButton('💕Избранное')
+btnRandom = KeyboardButton('⚙Ред. избранного')
+btnOther = KeyboardButton('Спец. меню🎥')
 mainMenu = ReplyKeyboardMarkup(resize_keyboard=True).add(btnRandom, btnListFollow, btnOther)
 
 
@@ -54,3 +54,8 @@ FollowMenu = ReplyKeyboardMarkup(resize_keyboard=True).add(btnAddExistingBuildin
 # ~~~ Photos_menu ~~~
 btnNextPhoto = KeyboardButton('Следующее фото')
 PhotosSendMenu = ReplyKeyboardMarkup(resize_keyboard=True).add(btnNextPhoto, btnCancel)
+
+# ~~~ Choice_in_adding~~~
+btnIKnow = KeyboardButton('Знаю название💡')
+btnDontKnow = KeyboardButton('Показать здания\nв городе🏙')
+ChoiceInAddingMenu = ReplyKeyboardMarkup().add(btnIKnow, btnDontKnow)

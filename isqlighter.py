@@ -156,5 +156,10 @@ class SQLighter:
         else:
             return SQLighter.search_for_needed_office(self, parent, offices_list)
 
+    def search_for_buildings_in_city(self, city: str) -> list:
+        buildings = list(self.cursor.execute(f"SELECT build_name FROM buildings WHERE buildings.build_town_address = "
+                                             f"'{city}'"))
+        return buildings
+
     def close(self):
         self.connection.close()

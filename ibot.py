@@ -35,25 +35,33 @@ async def command_start(message: types.Message):
                                                  "без лишних временных затрат")
 
     await bot.send_message(message.from_user.id, "Пояснение, что значат названия кнопок в различных меню(меню-набор "
-                                                 "кнопок внизу экрана)\n1. 💕📄 - Список вашего избранного\n2. 💕⚙ - "
+                                                 "кнопок внизу экрана)\n1. 💕Избранное - Список вашего избранного\n2. "
+                                                 "⚙Ред. избранного - "
                                                  "Редактирование вашего избранного, здесь вы можете добавлять здания "
                                                  "в список избранного, а так же удалять здания из него\n3. 🏠Главное - "
-                                                 "Кнопка возвращающая вас в основное меню")
+                                                 "Кнопка возвращающая вас в основное меню\n4. Спец. меню🎥 - кнопка "
+                                                 "только для людей, которые сами хотят добавить здание(вводить в бота "
+                                                 "фотографии)")
 
-    await bot.send_message(message.from_user.id, "Для того, чтобы начать испольховать бота в нужном для вас здании, "
+    await bot.send_message(message.from_user.id, "Для того, чтобы начать использовать бота в нужном для вас здании, "
                                                  "вам нужно сперва добавить его в избранное. Как это сделать?:\n"
-                                                 "1. Вам нужно нажать на кнопку снизу экрана под названием '💕⚙'\n"
-                                                 "2. Нажмите на кнопку '🔍Добавить'\n"
-                                                 "3. Введите название здания которое вы хотите добавить"
-                                                 "(сначала попробуйте ввести абривиатуру, если здание не нашлось, "
+                                                 "1. Вам нужно нажать на кнопку снизу экрана под названием "
+                                                 "'⚙Ред. избранного'\n2. Нажмите на кнопку '🔍Добавить'\n"
+                                                 "3. Если вы знаете название вашего здания и нажмете 'Знаю название💡', "
+                                                 "то\n3.1Введите название здания которое вы хотите добавить"
+                                                 "(сначала попробуйте ввести аббревиатуру, если здание не нашлось, "
                                                  "введите название вашего здания полностью)\n Обратите внимание, "
                                                  "здания будут загружаться в бота постепенно и возможно на данном этапе"
-                                                 " здания в нем еще нет")
+                                                 " здания в нем еще нет."
+                                                 "\nЕсли это не сработало, то\n3.2 Нажмите на кнопку "
+                                                 "'Показать здания в городе🏙' в этом же меню. После введите ваш город, "
+                                                 "а далее выберите из списка всех зданий в этом городе ваше здание, "
+                                                 "если оно есть, если нет, то нажмите на кнопку 'Отмена❌'")
 
-    await bot.send_message(message.from_user.id, f"Данный бот, расчитан на то, что люди будут сами постепенно "
+    await bot.send_message(message.from_user.id, f"Данный бот, рассчитан на то, что люди будут сами постепенно "
                                                  f"добавлять свои здания в бота и тем самым будут помогать остальным. "
                                                  f"Если вашего здания нет в боте и вы хотите лично добавить его, "
-                                                 "то пожалуйста напишите сюда - {https://t.me/sjwevalz}, Сразу "
+                                                 "то пожалуйста напишите сюда - { https://t.me/sjwevalz }, Сразу "
                                                  "указывайте город и название здания, после этого вам будет выдана "
                                                  "соответствующая роль.")
 
@@ -68,7 +76,7 @@ async def command_help(message: types.Message):
     await bot.send_message(message.from_user.id, "Это бот для нахождения необходимой аудитории в"
                                                  "учебных заведениях. Для начала работы введите "
                                                  "'/start' после чего вам будет доступен полный "
-                                                 "функционал бота: \n1. Добавление зданий в избранное "
+                                                 "функционал бота: \nДобавление зданий в избранное "
                                                  "(как своего так и чужого).\nЧтобы пользоваться каким-либо зданием"
                                                  "его сперва нужно добавить в список избранного во вкладке избранное")
 
@@ -357,14 +365,14 @@ async def cmd_cancel(message: types.Message, state: FSMContext):
     await state.finish()
     await message.answer("Процесс завершен", reply_markup=nav.mainMenu)
 
-# ~~~~~~~~~~~~~~~~~~~Добавление существующего в бд здания к пользователю~~~~~~~~~~~~~~~~~~~
+# ~~~~~~~~~~~~~~~~~~~Добавление существующего в бд здания к пользователю ~~~~~~~~~~~~~~~~~~~
 
 
 class Addexistingbuilding(StatesGroup):
     ex_wait_building_name = State()
 
 
-@dp.message_handler(Text(equals='🔍Добавить'))
+@dp.message_handler(Text(equals='Знаю название💡'))
 async def add_another_building(message: types.Message):
     await bot.send_message(message.from_user.id,
                            'Введите имя здания которое вы хотите найти',
@@ -390,6 +398,63 @@ async def add_name_of_another_building(message: types.Message, state: FSMContext
     await state.finish()
 
 
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~Функция для поиска здания по городу~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+class SearchInCity(StatesGroup):
+    wait_for_name_of_the_city = State()
+    wait_for_building_name = State()
+
+
+@dp.message_handler(Text(equals='Показать здания\nв городе🏙'))
+async def start_waiting_city_s_name(message: types.Message):
+    await message.answer("Пожалуйста введите наименование города. Пример: Санкт-Петербург",
+                         reply_markup=nav.FavouriteListMenu)
+    await SearchInCity.wait_for_name_of_the_city.set()
+
+
+async def take_city_and_show_buildings(message: types.Message, state: FSMContext):
+    buildings = db.search_for_buildings_in_city(message.text.lower())
+    print(buildings)
+    if len(buildings) == 0:
+        await message.answer("К сожалению еще ни одного здания из вашего города не было добавлено.")
+        await state.finish()
+    else:
+        await message.answer("Для отмены процесса вы можете нажать кнопку 'Отмена❌'", reply_markup=nav.FavouriteListMenu)
+        url_keyboard_buildings = InlineKeyboardMarkup(row_width=2)
+        for building in buildings:
+            i = building[0]
+            url_keyboard_buildings.add(InlineKeyboardButton(i, callback_data=i))
+        url_keyboard_buildings.add(InlineKeyboardButton("Отмена❌", callback_data="Отмена❌"))
+        await message.answer('Все здания в вашем городе',
+                             reply_markup=url_keyboard_buildings)
+        await SearchInCity.next()
+
+
+async def add_building_or_not(callback: types.CallbackQuery, state: FSMContext):
+    await callback.answer(callback['data'])
+    name = callback['data']
+    if name == "Отмена❌":
+        await bot.send_message(callback.from_user.id, "Сожалеем, что вашего здания все еще нет в боте. Бот постоянно "
+                                                      "обновляется, для того чтобы такого впредь не происходило",
+                               reply_markup=nav.mainMenu)
+        await state.finish()
+
+    else:
+        try:
+            if len(db.check_on_added_buildings_of_user(name, int(callback.from_user.id))) == 0:
+                db.add_another_building_to_user(name, callback.from_user.id)
+                await bot.send_message(callback.from_user.id, f"Здание {name} успешно добавлено к вам в избранное",
+                                       reply_markup=nav.mainMenu)
+                await state.finish()
+            else:
+                await bot.send_message(callback.from_user.id, f"Здание под название {name} уже есть у вас в избранном.",
+                                       reply_markup=nav.mainMenu)
+        except Exception:
+            await bot.send_message(callback.from_user.id, "Что-то пошло не так, вы возвращены в главное меню",
+                                   reply_markup=nav.mainMenu)
+
+    await state.finish()
+
 # ~~~~~~~~~~~~~~~~~~~~Функция избранного берущая данные из бд~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
@@ -399,7 +464,7 @@ class WayToOffice(StatesGroup):
     send_photo = State()
 
 
-@dp.message_handler(Text(equals='💕📄'))
+@dp.message_handler(Text(equals='💕Избранное'))
 async def favourites_buildings(message: types.Message):
     await message.answer("Для отмены процесса нажмите кнопку 'Отмена'", reply_markup=nav.FavouriteListMenu)
     url_keyboard = InlineKeyboardMarkup(row_width=2)
@@ -493,20 +558,20 @@ async def reverse_status_user_with_building(callback_query: types.CallbackQuery,
 @dp.message_handler(content_types=ContentType.ANY)
 async def bot_message(message: types.Message):
     if message.text == '🏠Главное':
-        await bot.send_message(message.from_user.id, '*ГЛАВНОЕ МЕНЮ*', reply_markup=nav.mainMenu)
+        await bot.send_message(message.from_user.id, 'вы в главном меню', reply_markup=nav.mainMenu)
 
     elif message.content_type == 'sticker':
         await message.answer('Ты прислал мне стикер')
 
-    elif message.text == '💕⚙':
-        await bot.send_message(message.from_user.id, '*ИЗБРАННОЕ*', reply_markup=nav.FollowMenu)
+    elif message.text == '⚙Ред. избранного':
+        await bot.send_message(message.from_user.id, 'вы в меню редактирования избранного', reply_markup=nav.FollowMenu)
 
-    elif message.text == 'Другое➱':
-        await bot.send_message(message.from_user.id, '*ДРУГОЕ*',
+    elif message.text == 'Спец. меню🎥':
+        await bot.send_message(message.from_user.id, 'вы в меню для контентмейкеров',
                                reply_markup=nav.otherMenu)
 
     elif message.text == '➖Удалить':
-        await bot.send_message(message.from_user.id, '*Меню удаления*', reply_markup=nav.SettingsMenu)
+        await bot.send_message(message.from_user.id, 'вы в меню удаления', reply_markup=nav.SettingsMenu)
 
     elif message.text == '⛔Удалить ВСЕ':
         await bot.send_message(message.from_user.id,
@@ -521,6 +586,13 @@ async def bot_message(message: types.Message):
     elif message.text == '⚠❗⛔УДАЛИТЬ ВСЕ ЗДАНИЯ ИЗ ИЗБРАННОГО БЕЗВОЗВРАТНО':
         db.delete_all_buildings_from_user(int(message.from_user.id))
         await message.answer("Здания успешно удалены")
+
+    elif message.text == '🔍Добавить':
+        await bot.send_message(message.from_user.id, "Вы в меню выбора, если вы знаете название здания в боте - "
+                                                     "нажмите кнопку 'Знаю название', иначе, нажмите 'Показать здания "
+                                                     "в городе🏙'",
+                               reply_markup=nav.ChoiceInAddingMenu
+                               )
 
     else:
         await message.reply('Мне немного не понятно, что именно вы имели ввиду, попробуйте заново')
@@ -593,12 +665,19 @@ def register_way_to_office(dp: Dispatcher):
     dp.register_message_handler(send_photo_to_user, state=WayToOffice.send_photo)
 
 
+def register_choice_add_fn(dp: Dispatcher):
+    dp.register_message_handler(start_waiting_city_s_name, Text(equals="'Показать здания\nв городе🏙'"), state='*')
+    dp.register_message_handler(take_city_and_show_buildings, state=SearchInCity.wait_for_name_of_the_city)
+    dp.register_callback_query_handler(add_building_or_not, state=SearchInCity.wait_for_building_name)
+
+
 register_way_to_office(dp)
 register_handler_buildings(dp)
 register_existing_handler_buildings(dp)
 register_adding_new_admin_func(dp)
 register_adding_new_photographer_func(dp)
 register_del_building(dp)
+register_choice_add_fn(dp)
 
 
 if __name__ == '__main__':
