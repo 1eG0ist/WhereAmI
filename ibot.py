@@ -407,26 +407,34 @@ class SearchInCity(StatesGroup):
 
 @dp.message_handler(Text(equals='Показать здания\nв городе🏙'))
 async def start_waiting_city_s_name(message: types.Message):
-    await message.answer("Пожалуйста введите наименование города. Пример: Санкт-Петербург",
-                         reply_markup=nav.FavouriteListMenu)
+    url_keyboard_cities = InlineKeyboardMarkup(row_width=2)
+    cities = db.search_all_cities()
+    for i in cities:
+        url_keyboard_cities.add(InlineKeyboardButton(i[0], callback_data=i[0]))
+    url_keyboard_cities.add(InlineKeyboardButton("Отмена❌", callback_data="Отмена❌"))
+    await message.answer("Выберите город: ",
+                         reply_markup=url_keyboard_cities)
+    await message.answer("Если вашего города нет-нажмите 'Отмена❌'")
     await SearchInCity.wait_for_name_of_the_city.set()
 
 
-async def take_city_and_show_buildings(message: types.Message, state: FSMContext):
-    buildings = db.search_for_buildings_in_city(message.text.lower())
-    print(buildings)
-    if len(buildings) == 0:
-        await message.answer("К сожалению еще ни одного здания из вашего города не было добавлено.")
+async def take_city_and_show_buildings(callback: types.CallbackQuery, state: FSMContext):
+    if callback['data'] == 'Отмена❌':
+        await bot.send_message(callback.from_user.id, "Выбор города прекращен, сожалеем, что в вашем городе, еще нет "
+                                                      "добавленных зданий", reply_markup=nav.mainMenu)
         await state.finish()
     else:
-        await message.answer("Для отмены процесса вы можете нажать кнопку 'Отмена❌'", reply_markup=nav.FavouriteListMenu)
+        mes = callback['data']
+        buildings = db.search_for_buildings_in_city(mes)
+        await bot.send_message(callback.from_user.id, "Для отмены процесса вы можете нажать кнопку 'Отмена❌'",
+                               reply_markup=nav.FavouriteListMenu)
         url_keyboard_buildings = InlineKeyboardMarkup(row_width=2)
         for building in buildings:
             i = building[0]
             url_keyboard_buildings.add(InlineKeyboardButton(i, callback_data=i))
         url_keyboard_buildings.add(InlineKeyboardButton("Отмена❌", callback_data="Отмена❌"))
-        await message.answer('Все здания в вашем городе',
-                             reply_markup=url_keyboard_buildings)
+        await bot.send_message(callback.from_user.id, 'Все здания в вашем городе',
+                               reply_markup=url_keyboard_buildings)
         await SearchInCity.next()
 
 
@@ -667,7 +675,7 @@ def register_way_to_office(dp: Dispatcher):
 
 def register_choice_add_fn(dp: Dispatcher):
     dp.register_message_handler(start_waiting_city_s_name, Text(equals="'Показать здания\nв городе🏙'"), state='*')
-    dp.register_message_handler(take_city_and_show_buildings, state=SearchInCity.wait_for_name_of_the_city)
+    dp.register_callback_query_handler(take_city_and_show_buildings, state=SearchInCity.wait_for_name_of_the_city)
     dp.register_callback_query_handler(add_building_or_not, state=SearchInCity.wait_for_building_name)
 
 

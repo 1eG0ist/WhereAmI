@@ -161,5 +161,9 @@ class SQLighter:
                                              f"'{city}'"))
         return buildings
 
+    def search_all_cities(self):
+        cities = list(set(self.cursor.execute("SELECT build_town_address FROM buildings")))
+        return cities
+
     def close(self):
         self.connection.close()
