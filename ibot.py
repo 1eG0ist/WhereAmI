@@ -32,7 +32,7 @@ async def command_start(message: types.Message):
                            .format(message.from_user),
                            reply_markup=nav.mainMenu)
     await bot.send_message(message.from_user.id, "ЦЕЛЬ: Бот существует для того, чтобы помочь вам находить кабинеты "
-                                                 "в зданиях")
+                                                 "в зданиях.")
 
     await bot.send_message(message.from_user.id, "Пояснение, что значат названия кнопок в различных меню(меню-набор "
                                                  "кнопок внизу экрана)\n1. 💕Избранное - Список вашего избранного\n2. "
@@ -40,7 +40,7 @@ async def command_start(message: types.Message):
                                                  "в список избранного, а так же удалять здания из него\n3. 🏠Главное - "
                                                  "Кнопка возвращающая вас в основное меню\n4. Спец. меню🎥 - кнопка "
                                                  "только для людей, которые сами хотят добавить здание(вводить в бота "
-                                                 "фотографии)")
+                                                 "фотографии).")
 
     await bot.send_message(message.from_user.id, "Для того, чтобы начать использовать бота в нужном для вас здании, "
                                                  "вам нужно сперва добавить его в избранное. Как это сделать?:\n"
@@ -55,7 +55,11 @@ async def command_start(message: types.Message):
                                                  "\nЕсли это не сработало, то\n3.2 Нажмите на кнопку "
                                                  "'Показать здания в городе🏙' в этом же меню. После введите ваш город, "
                                                  "а далее выберите из списка всех зданий в этом городе ваше здание, "
-                                                 "если оно есть, если нет, то нажмите на кнопку 'Отмена❌'")
+                                                 "если оно есть, если нет, то нажмите на кнопку 'Отмена❌'.")
+
+    await bot.send_message(message.from_user.id, "В процессе пользования ботом внизу вашего экрана всегда будут "
+                                                 "кнопки, если их нет, то нажмите на 4 квадрата в правой нижней части "
+                                                 "экрана.")
 
     await bot.send_message(message.from_user.id, f"Данный бот, рассчитан на то, что люди будут сами постепенно "
                                                  f"добавлять свои здания в бота и тем самым будут помогать остальным. "
@@ -75,8 +79,8 @@ async def command_help(message: types.Message):
     await bot.send_message(message.from_user.id, "Это бот для нахождения необходимой аудитории в"
                                                  "учебных заведениях. Для начала работы введите "
                                                  "'/start' после чего вам будет доступен полный "
-                                                 "функционал бота: \nДобавление зданий в избранное "
-                                                 "(как своего так и чужого).\nЧтобы пользоваться каким-либо зданием"
+                                                 "функционал бота и предоставлена краткая инструкция по использованию "
+                                                 ".\nЧтобы пользоваться каким-либо зданием"
                                                  "его сперва нужно добавить в список избранного во вкладке избранное")
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~добавление нового админа~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -91,7 +95,7 @@ async def adding_new_admin(message: types.message):
     if message.from_user.id != 999734133:
         await message.answer('У вас нет доступа к этой команде')
     else:
-        await message.answer("Введите telegram id человека которому вы хотите выдать роль 'admin'")
+        await message.answer("Введите telegram id человека, которому вы хотите выдать роль 'admin'")
         await AddNewAdmin.wait_tg_id_for_add_in_admins.set()
 
 
@@ -123,7 +127,7 @@ async def adding_new_photographer(message: types.Message):
     if not db.check_user_on_admin_status(message.from_user.id):
         await message.answer(f"У вас нет доступа к этой команде")
     else:
-        await message.answer(f"Введите id пользователя которому вы хотите выдать роль 'photographer'")
+        await message.answer(f"Введите id пользователя, которому вы хотите выдать роль 'photographer'")
         await AddNewPhotographer.wait_tg_id_for_add_in_photographers.set()
 
 
@@ -164,14 +168,14 @@ async def start_dialog_with_user(message: types.Message):
         await message.answer("К сожалению у вас нет статуса 'photographer',  "
                              "который необходим для добавления собственных зданий, если вы действительно хотите "
                              "добавить здание, то обратитесь к человеку в телеграмме <ссылка>, указав наименование и "
-                             "город учреждения план которого вы хотите добавить")
+                             "город учреждения, план которого вы хотите добавить.")
     else:
         await message.answer("Если хотите прервать добавление "
                              "нового здания - нажмите кнопку 'Отмена', или введите команду "
                              "'/отмена'.\nЕсли вы ошиблись, то нажав на кнопку 'Назад', вы вернетесь "
-                             "на один шаг назад(работает только при указании информации о здании)")
+                             "на один шаг назад(работает только при указании информации о здании).")
 
-        await message.answer("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX")
+        await message.answer("~-~-~-~-~-~-~-~-~-~-~-~")
         await message.answer("1. Введите имя вашего здания:", reply_markup=nav.AddingBuildMenu)
         await DialogWithUser.waiting_for_building_name.set()
 
@@ -182,30 +186,30 @@ async def start_waiting_for_building_name(message: types.Message, state: FSMCont
         await message.answer(f"Здание под названием {message.text} уже добавлено в нашего бота, "
                              f"проверьте, возможно это как раз то здание которое вы ищите "
                              f"если это не так, и названия зданий совпали по случайности, назовите "
-                             f"здание по другому")
-        await message.answer("Вы перешли на шаг назад, введите другое название здания")
+                             f"здание по другому.")
+        await message.answer("Вы перешли на шаг назад, введите другое название здания.")
         await DialogWithUser.previous()
         await DialogWithUser.next()
     else:
-        await message.answer('2. Введите количество этажей в вашем здании')
+        await message.answer('2. Введите количество этажей в вашем здании.')
         await DialogWithUser.next()
 
 
 async def start_waiting_for_number_of_floors(message: types.Message, state: FSMContext):
     await state.update_data(number_of_building=message.text.lower())
-    await message.answer('3. Введите город в котором находится ваше здание')
+    await message.answer('3. Введите город, в котором находится ваше здание.')
     await DialogWithUser.next()
 
 
 async def start_waiting_for_town_address(message: types.Message, state: FSMContext):
     await state.update_data(building_town_address=message.text.lower())
-    await message.answer('4. Введите название улицы на которой находится ваше здание')
+    await message.answer('4. Введите название улицы, на которой находится ваше здание.')
     await DialogWithUser.next()
 
 
 async def start_waiting_for_street_address(message: types.Message, state: FSMContext):
     await state.update_data(building_street_address=message.text.lower())
-    await message.answer('5. Введите номер вашего здания на указанной улице')
+    await message.answer('5. Введите номер вашего здания на указанной улице.')
     await DialogWithUser.next()
 
 
@@ -217,14 +221,14 @@ async def start_waiting_for_number_address(message: types.Message, state: FSMCon
                          f"{user_new_building_data['number_of_building']} и находится оно в городе "
                          f"{user_new_building_data['building_town_address']} по адресу "
                          f"{user_new_building_data['building_street_address']}, "
-                         f"{user_new_building_data['building_number_address']}",
+                         f"{user_new_building_data['building_number_address']}.",
                          reply_markup=nav.AddingPhotosMenu)
     await message.answer(f"Введите номера всех кабинетов через запятую, если номера кабинетов идут подряд, то вы "
                          f"можете указать их так: 557-560 или 345-360,401-420.\nОбратите внимание, меньшее число "
                          f"слева-большее справа. Рекомендуем в целом добавлять кабинеты от меньшего к большему. Так "
                          f"же вам нужно указать все буквенные названия кабинетов(буква в букву как вы укажите в "
                          f"подписи под фотографией), чтобы пользователи "
-                         f"могли воспользоваться этим списком")
+                         f"могли воспользоваться этим списком.")
     SMLF.adding_build(user_new_building_data, int(message.from_user.id))
     await state.update_data(photos=[[1]])
     await DialogWithUser.next()
@@ -236,7 +240,7 @@ async def take_numbers_of_building(message: types.Message, state: FSMContext):
     try:
         for number in mtext.split(','):
             if number.count('-') > 1:
-                await message.answer("К сожалению вы неверно составили сообщение и указали лишнее -, "
+                await message.answer("К сожалению, вы неверно составили сообщение и указали лишнее -, "
                                      "пожалуйста введите перечень кабинетов еще раз")
                 await DialogWithUser.previous()
                 await DialogWithUser.next()
@@ -256,7 +260,7 @@ async def take_numbers_of_building(message: types.Message, state: FSMContext):
 
         await state.update_data(offices_list=offices_list)
 
-        await message.answer("Теперь пожалуйста введите фотографию входа в ваше здание(внутри, спиной к входной "
+        await message.answer("Теперь, пожалуйста, введите фотографию входа в ваше здание(внутри, спиной к входной "
                              "двери) и подпишите как <ВХОД>, когда вы добавите все кабинеты введите /stop или нажмите "
                              "кнопку '✔Завершить'")
         await DialogWithUser.next()
@@ -289,7 +293,7 @@ async def adding_entrance_of_building(message: types.Message, state: FSMContext)
                              f"пустить ветвь фотографий начиная от этой фотографии, вам нужно будет указать этот номер")
 
         await message.answer(f"Теперь вам нужно подписывать каждую фотографию, например - "
-                             f"<пройдите вперед по коридору до упора> или <войдите через дверь>")
+                             f"<пройдите вперед по коридору до упора> или <пройдите в дверной проём>")
 
         await message.answer(f"По умолчанию ваша следующая фотография будет привязываться к предшествующей, если вам "
                              f"нужно сделать новую ветку - нажмите кнопку <новая ветка> и введите номер фотографии, с "
@@ -338,7 +342,7 @@ async def start_adding_photos_from_user(message: types.Message, state: FSMContex
 
         except Exception:
             await message.answer("Что-то пошло не так, пожалуйста отправьте фотографию заново, возможно вы указали "
-                                 "номер фотографии которого не существует, так что убедитесь, "
+                                 "номер фотографии, которого не существует, так что убедитесь, "
                                  "что бот отправлял в ответ на ваше фото номер, которой вы указали")
 
 
@@ -433,19 +437,19 @@ async def start_waiting_city_s_name(message: types.Message):
 async def take_city_and_show_buildings(callback: types.CallbackQuery, state: FSMContext):
     if callback['data'] == 'Отмена❌':
         await bot.send_message(callback.from_user.id, "Выбор города прекращен, сожалеем, что в вашем городе, еще нет "
-                                                      "добавленных зданий", reply_markup=nav.mainMenu)
+                                                      "добавленных зданий.", reply_markup=nav.mainMenu)
         await state.finish()
     else:
         mes = callback['data']
         buildings = db.search_for_buildings_in_city(mes)
-        await bot.send_message(callback.from_user.id, "Для отмены процесса вы можете нажать кнопку 'Отмена❌'",
+        await bot.send_message(callback.from_user.id, "Для отмены процесса вы можете нажать кнопку 'Отмена❌'.",
                                reply_markup=nav.FavouriteListMenu)
         url_keyboard_buildings = InlineKeyboardMarkup(row_width=2)
         for building in buildings:
             i = building[0]
             url_keyboard_buildings.add(InlineKeyboardButton(i, callback_data=i))
         url_keyboard_buildings.add(InlineKeyboardButton("Отмена❌", callback_data="Отмена❌"))
-        await bot.send_message(callback.from_user.id, 'Все здания в вашем городе',
+        await bot.send_message(callback.from_user.id, 'Все здания в вашем городе:',
                                reply_markup=url_keyboard_buildings)
         await SearchInCity.next()
 
@@ -455,7 +459,7 @@ async def add_building_or_not(callback: types.CallbackQuery, state: FSMContext):
     name = callback['data']
     if name == "Отмена❌":
         await bot.send_message(callback.from_user.id, "Сожалеем, что вашего здания все еще нет в боте. Бот постоянно "
-                                                      "обновляется, для того чтобы такого впредь не происходило",
+                                                      "обновляется, для того чтобы такого впредь не происходило.",
                                reply_markup=nav.mainMenu)
         await state.finish()
 
@@ -463,14 +467,14 @@ async def add_building_or_not(callback: types.CallbackQuery, state: FSMContext):
         try:
             if len(db.check_on_added_buildings_of_user(name, int(callback.from_user.id))) == 0:
                 db.add_another_building_to_user(name, callback.from_user.id)
-                await bot.send_message(callback.from_user.id, f"Здание {name} успешно добавлено к вам в избранное",
+                await bot.send_message(callback.from_user.id, f"Здание {name} успешно добавлено к вам в избранное.",
                                        reply_markup=nav.mainMenu)
                 await state.finish()
             else:
                 await bot.send_message(callback.from_user.id, f"Здание под название {name} уже есть у вас в избранном.",
                                        reply_markup=nav.mainMenu)
         except Exception:
-            await bot.send_message(callback.from_user.id, "Что-то пошло не так, вы возвращены в главное меню",
+            await bot.send_message(callback.from_user.id, "Что-то пошло не так, вы возвращены в главное меню.",
                                    reply_markup=nav.mainMenu)
 
     await state.finish()
@@ -490,7 +494,7 @@ async def favourites_buildings(message: types.Message):
     url_keyboard = InlineKeyboardMarkup(row_width=2)
     favour_list = db.show_favourites_user_buildings(int(message.from_user.id))
     if len(favour_list) == 0:
-        await message.answer("У вас в избранном пока нет ни одного здания")
+        await message.answer("У вас в избранном пока нет ни одного здания.")
         return
     for i in favour_list:
         url_keyboard.add(InlineKeyboardButton(i, callback_data=i))
@@ -541,7 +545,7 @@ async def send_photo_to_user(message: types.Message, state: FSMContext):
 
         else:
             await message.answer("Сообщение не распознано\nДля того, чтобы получить следующее фото, нажмите на кнопку "
-                                 "'Следующее фото', для отмены процесса нажмите кнопку 'Отмена'\nПожалуйста повторите")
+                                 "'Следующее фото', для отмены процесса нажмите кнопку 'Отмена'")
     except Exception:
         await message.answer("Похоже что-то пошло не так, отправка пути прекращена", reply_markup=nav.mainMenu)
 
@@ -616,29 +620,29 @@ async def show_all_offices_in_building(callback: types.CallbackQuery, state: FSM
 @dp.message_handler(content_types=ContentType.ANY)
 async def bot_message(message: types.Message):
     if message.text == '🏠Главное':
-        await bot.send_message(message.from_user.id, 'вы в главном меню', reply_markup=nav.mainMenu)
+        await bot.send_message(message.from_user.id, 'вы в главном меню.', reply_markup=nav.mainMenu)
 
     elif message.content_type == 'sticker':
         await message.answer('Ты прислал мне стикер')
 
     elif message.text == '⚙Ред. избранного':
-        await bot.send_message(message.from_user.id, 'вы в меню редактирования избранного', reply_markup=nav.FollowMenu)
+        await bot.send_message(message.from_user.id, 'вы в меню редактирования избранного.', reply_markup=nav.FollowMenu)
 
     elif message.text == 'Спец. меню🎥':
-        await bot.send_message(message.from_user.id, 'вы в меню для контентмейкеров',
+        await bot.send_message(message.from_user.id, 'вы в меню для контентмейкеров.',
                                reply_markup=nav.otherMenu)
 
     elif message.text == '➖Удалить':
-        await bot.send_message(message.from_user.id, 'вы в меню удаления', reply_markup=nav.SettingsMenu)
+        await bot.send_message(message.from_user.id, 'вы в меню удаления.', reply_markup=nav.SettingsMenu)
 
     elif message.text == '⛔Удалить ВСЕ':
         await bot.send_message(message.from_user.id,
-                               'Если вы действительно хотите удалить все здания нажмите на кнопку удаления еще раз',
+                               'Если вы действительно хотите удалить все здания нажмите на кнопку удаления еще раз.',
                                reply_markup=nav.DelAllBuildsMenu)
 
     elif message.text == '➕Добавить здание':
         await bot.send_message(message.from_user.id,
-                               'Имейте ввиду, эта функция доступна только людям, с определенной ролью',
+                               'Имейте ввиду, эта функция доступна только людям, с определенной ролью.',
                                reply_markup=nav.AddingChoiceMenu)
 
     elif message.text == '⚠❗⛔УДАЛИТЬ ВСЕ ЗДАНИЯ ИЗ ИЗБРАННОГО БЕЗВОЗВРАТНО':
@@ -648,7 +652,7 @@ async def bot_message(message: types.Message):
     elif message.text == '🔍Добавить':
         await bot.send_message(message.from_user.id, "Вы в меню выбора, если вы знаете название здания в боте - "
                                                      "нажмите кнопку 'Знаю название', иначе, нажмите 'Показать здания "
-                                                     "в городе🏙'",
+                                                     "в городе🏙'.",
                                reply_markup=nav.ChoiceInAddingMenu
                                )
 
