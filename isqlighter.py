@@ -135,12 +135,6 @@ class SQLighter:
         self.connection.commit()
         return graph_id
 
-    def add_child_to_photo(self, graph_id, child_id_in_graph):
-        with self.connection:
-            self.cursor.execute(f"INSERT INTO 'child_of_photo' (graph_id, child_id_in_graph)", (
-                graph_id, child_id_in_graph
-            ))
-
     def search_for_needed_id(self, name: str, office_number: str) -> int:
         parent = list(self.cursor.execute(f"SELECT id FROM graph WHERE building_id = (SELECT id FROM buildings WHERE "
                                           f"build_name = '{name}') AND description = '{str(office_number)}'"))
@@ -164,6 +158,25 @@ class SQLighter:
     def search_all_cities(self):
         cities = list(set(self.cursor.execute("SELECT build_town_address FROM buildings")))
         return cities
+
+    def take_building_id(self, name):
+        building_id = self.cursor.execute(f"SELECT id FROM buildings WHERE buildings.build_name = '{name}'")
+        return building_id
+
+    def add_all_offices_of_building(self, offices_names_list, building_id):
+        with self.connection:
+            for office in offices_names_list:
+                self.cursor.execute("INSERT INTO 'offices_names' (building_id, office_number_or_name) "
+                                    "VALUES (?, ?)", (
+                    building_id, office
+                ))
+
+        self.connection.commit()
+
+    def take_all_offices_of_building(self, building_id):
+        offices = self.cursor.execute(f"SELECT office_number_or_name FROM offices_names WHERE "
+                                      f"offices_names.building_id = '{building_id}'")
+        return offices
 
     def close(self):
         self.connection.close()

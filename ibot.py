@@ -12,7 +12,7 @@ from functions import SimpleFunctions as SMLF
 from functions import StatesFunctions as STFUNC
 from PIL import Image
 
-# Уровень логгирования
+# Уровень logging'а
 logging.basicConfig(level=logging.INFO)
 
 # Инициализируем бота
@@ -32,12 +32,11 @@ async def command_start(message: types.Message):
                            .format(message.from_user),
                            reply_markup=nav.mainMenu)
     await bot.send_message(message.from_user.id, "ЦЕЛЬ: Бот существует для того, чтобы помочь вам находить кабинеты "
-                                                 "без лишних временных затрат")
+                                                 "в зданиях")
 
     await bot.send_message(message.from_user.id, "Пояснение, что значат названия кнопок в различных меню(меню-набор "
                                                  "кнопок внизу экрана)\n1. 💕Избранное - Список вашего избранного\n2. "
-                                                 "⚙Ред. избранного - "
-                                                 "Редактирование вашего избранного, здесь вы можете добавлять здания "
+                                                 "⚙Ред. избранного - здесь вы можете добавлять здания "
                                                  "в список избранного, а так же удалять здания из него\n3. 🏠Главное - "
                                                  "Кнопка возвращающая вас в основное меню\n4. Спец. меню🎥 - кнопка "
                                                  "только для людей, которые сами хотят добавить здание(вводить в бота "
@@ -222,7 +221,10 @@ async def start_waiting_for_number_address(message: types.Message, state: FSMCon
                          reply_markup=nav.AddingPhotosMenu)
     await message.answer(f"Введите номера всех кабинетов через запятую, если номера кабинетов идут подряд, то вы "
                          f"можете указать их так: 557-560 или 345-360,401-420.\nОбратите внимание, меньшее число "
-                         f"слева-большее справа. Рекомендуем в целом добавлять кабинеты от меньшего к большему")
+                         f"слева-большее справа. Рекомендуем в целом добавлять кабинеты от меньшего к большему. Так "
+                         f"же вам нужно указать все буквенные названия кабинетов(буква в букву как вы укажите в "
+                         f"подписи под фотографией), чтобы пользователи "
+                         f"могли воспользоваться этим списком")
     SMLF.adding_build(user_new_building_data, int(message.from_user.id))
     await state.update_data(photos=[[1]])
     await DialogWithUser.next()
@@ -242,12 +244,21 @@ async def take_numbers_of_building(message: types.Message, state: FSMContext):
                 for i in range(int(number.split('-')[0]), int(number.split('-')[1])+1):
                     offices_list.append(i)
             else:
-                offices_list.append(number)
-        offices_list = list(map(int, offices_list))
+                if number.isdigit():
+                    offices_list.append(number)
+                else:
+                    offices_list.append(number.lower().strip())
+
+        user_new_building_data = await state.get_data()
+        building_id = db.take_building_id(user_new_building_data["building_name"])
+        building_id = list(building_id)[0][0]
+        db.add_all_offices_of_building(offices_list, building_id)
+
         await state.update_data(offices_list=offices_list)
 
         await message.answer("Теперь пожалуйста введите фотографию входа в ваше здание(внутри, спиной к входной "
-                             "двери) и подпишите как <ВХОД>, когда вы добавите все кабинеты введите /stop")
+                             "двери) и подпишите как <ВХОД>, когда вы добавите все кабинеты введите /stop или нажмите "
+                             "кнопку '✔Завершить'")
         await DialogWithUser.next()
 
     except Exception:
@@ -271,7 +282,7 @@ async def adding_entrance_of_building(message: types.Message, state: FSMContext)
         graph_id = db.add_photo_in_graph(photo1, building_data['building_name'], message.caption, -1)
         await state.update_data(last_number=graph_id)
 
-        await state.update_data(redefinition_numbers={'1': graph_id})
+        await state.update_data(redefinition_numbers={1: graph_id})
 
         await state.update_data()
         await message.answer(f"Хорошо, теперь основание вашего ветвления имеет номер 1, когда захотите "
@@ -315,11 +326,11 @@ async def start_adding_photos_from_user(message: types.Message, state: FSMContex
             building_data = await state.get_data()
 
             graph_id = db.add_photo_in_graph(photo1, building_data['building_name'],
-                                             message.caption, building_data['last_number'])
+                                             message.caption.lower(), building_data['last_number'])
 
             data = await state.get_data()
             updated_dict = data["redefinition_numbers"]
-            max_dict=max(set(map(int, data['redefinition_numbers'].keys())))
+            max_dict = max(set(map(int, data['redefinition_numbers'].keys())))
             updated_dict[max_dict+1] = graph_id
             await state.update_data(redefinition_numbers=updated_dict)
             await state.update_data(last_number=graph_id)
@@ -335,11 +346,12 @@ async def start_waiting_for_last_number(message: types.Message, state: FSMContex
     try:
         data = await state.get_data()
         data = data["redefinition_numbers"]
-        await state.update_data(last_number=data[message.text])
+        print("data: ", data)
+        await state.update_data(last_number=data[int(message.text)])
         await message.answer("Теперь следующая фотография будет привязана к этому номеру")
         await message.answer("Введите фотографию: ")
         await DialogWithUser.previous()
-    except Exception:
+    except ValueError:
         await message.answer("Что-то пошло не так, повторите попытку")
 
 
@@ -490,7 +502,9 @@ async def favourites_buildings(message: types.Message):
 async def reaction_on_favourites_buildings(callback: types.CallbackQuery, state: FSMContext):
     await callback.answer(callback['data'])
     await state.update_data(building=callback['data'])
-    await bot.send_message(int(callback.from_user.id), "Введите номер кабинета")
+    await bot.send_message(int(callback.from_user.id), "Введите номер или название кабинета, если не знаете как "
+                                                       "называется или какой номер имеет ваш кабинет, то выйдите в "
+                                                       "главное меню и введите команду '/showoffices'")
     await state.update_data(send_number=1)
     await WayToOffice.next()
 
@@ -557,6 +571,42 @@ async def reverse_status_user_with_building(callback_query: types.CallbackQuery,
     await bot.send_message(callback_query.from_user.id, f"Здание {callback_query['data'].split('_')[1]}"
                                                         f" было удалено из списка избранных")
     await callback_query.answer(callback_query['data'].split('_')[1])
+    await state.finish()
+
+
+# ~~~~~~~~~~~~~Представление пользователю всех кабинетов выбранного здания~~~~~~~~~~~~~~~~~~
+
+class ShowAllOffices(StatesGroup):
+    wait_for_building_name_for_show_offices = State()
+
+
+@dp.message_handler(commands=['showoffices'])
+async def show_buildings_choice(message: types.Message):
+    await message.answer("Для отмены процесса нажмите кнопку 'Отмена'", reply_markup=nav.FavouriteListMenu)
+    url_keyboard = InlineKeyboardMarkup(row_width=2)
+    favour_list = db.show_favourites_user_buildings(int(message.from_user.id))
+    if len(favour_list) == 0:
+        await message.answer("Прежде чем посмотреть список кабинетов здания, вам нужно добавить это здание в избранное")
+        return
+    for i in favour_list:
+        url_keyboard.add(InlineKeyboardButton(i, callback_data=i))
+    await message.answer('Выберите здание,\nкабинеты которого вы хотите увидеть: ',
+                         reply_markup=url_keyboard)
+    await ShowAllOffices.wait_for_building_name_for_show_offices.set()
+
+
+async def show_all_offices_in_building(callback: types.CallbackQuery, state: FSMContext):
+    await callback.answer(callback['data'])
+    building_id = list(db.take_building_id(callback['data']))[0][0]
+    offices_str = ""
+    offices_list = sorted(list(map(lambda x: str(x[0]), list(db.take_all_offices_of_building(building_id)))))
+    for i in range(len(offices_list)-1):
+        offices_str += offices_list[i]+','
+
+    offices_str += offices_list[len(offices_list)-1]
+
+    await bot.send_message(callback.from_user.id, f"Кабинеты в здании {callback['data']}: \n{offices_str}",
+                           reply_markup=nav.mainMenu)
     await state.finish()
 
 
@@ -664,7 +714,7 @@ def register_del_building(dp: Dispatcher):
 
 
 def register_way_to_office(dp: Dispatcher):
-    dp.register_message_handler(favourites_buildings, Text(equals="📄Список избранного"), state='*')
+    dp.register_message_handler(favourites_buildings, Text(equals="💕Избранное"), state='*')
     dp.register_message_handler(cmd_cancel, Text(equals="Отмена"), state="*")
     dp.register_callback_query_handler(reaction_on_favourites_buildings,
                                        state=WayToOffice.follow_list_wait_for_building_name)
@@ -679,6 +729,12 @@ def register_choice_add_fn(dp: Dispatcher):
     dp.register_callback_query_handler(add_building_or_not, state=SearchInCity.wait_for_building_name)
 
 
+def register_showing_offices_fn(dp: Dispatcher):
+    dp.register_message_handler(show_buildings_choice, commands=['showoffices'], state='*')
+    dp.register_callback_query_handler(show_all_offices_in_building,
+                                       state=ShowAllOffices.wait_for_building_name_for_show_offices)
+
+
 register_way_to_office(dp)
 register_handler_buildings(dp)
 register_existing_handler_buildings(dp)
@@ -686,7 +742,7 @@ register_adding_new_admin_func(dp)
 register_adding_new_photographer_func(dp)
 register_del_building(dp)
 register_choice_add_fn(dp)
-
+register_showing_offices_fn(dp)
 
 if __name__ == '__main__':
     executor.start_polling(dp, skip_updates=True)
